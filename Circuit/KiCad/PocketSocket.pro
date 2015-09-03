@@ -1,4 +1,4 @@
-update=2015/09/03 15:39:20
+update=2015/09/03 16:37:59
 version=1
 last_client=kicad
 [pcbnew]
@@ -23,9 +23,11 @@ ModuleOutlineThickness=0.150000000000
 [cvpcb]
 version=1
 NetIExt=net
+[general]
+version=1
 [eeschema]
 version=1
-LibDir=
+LibDir=Components
 [eeschema/libraries]
 LibName1=power
 LibName2=device
@@ -56,5 +58,13 @@ LibName26=opto
 LibName27=atmel
 LibName28=contrib
 LibName29=valves
-[general]
-version=1
+LibName30=Components/RoboKUT_communication
+LibName31=Components/RoboKUT_conn
+LibName32=Components/RoboKUT_conn_KRP
+LibName33=Components/RoboKUT_IC
+LibName34=Components/RoboKUT_Passive
+LibName35=Components/RoboKUT_regul
+LibName36=Components/RoboKUT_sensor
+LibName37=Components/RoboKUT_special
+LibName38=Components/RoboKUT_SW
+LibName39=Components/RoboKUT_uC
