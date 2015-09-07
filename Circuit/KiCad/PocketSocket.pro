@@ -1,4 +1,4 @@
-update=2015/09/03 16:37:59
+update=2015/09/06 23:48:24
 version=1
 last_client=kicad
 [pcbnew]
@@ -23,8 +23,6 @@ ModuleOutlineThickness=0.150000000000
 [cvpcb]
 version=1
 NetIExt=net
-[general]
-version=1
 [eeschema]
 version=1
 LibDir=Components
@@ -68,3 +66,5 @@ LibName36=Components/RoboKUT_sensor
 LibName37=Components/RoboKUT_special
 LibName38=Components/RoboKUT_SW
 LibName39=Components/RoboKUT_uC
+[general]
+version=1
