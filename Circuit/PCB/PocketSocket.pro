@@ -1,4 +1,4 @@
-update=2015/09/09 12:41:01
+update=2015/09/10 3:15:13
 version=1
 last_client=kicad
 [pcbnew]
@@ -56,15 +56,15 @@ LibName26=opto
 LibName27=atmel
 LibName28=contrib
 LibName29=valves
-LibName30=Components/RoboKUT_communication
-LibName31=Components/RoboKUT_conn
-LibName32=Components/RoboKUT_conn_KRP
-LibName33=Components/RoboKUT_IC
-LibName34=Components/RoboKUT_Passive
-LibName35=Components/RoboKUT_regul
-LibName36=Components/RoboKUT_sensor
-LibName37=Components/RoboKUT_special
-LibName38=Components/RoboKUT_SW
-LibName39=Components/RoboKUT_uC
+LibName30=lib/component/RoboKUT_communication
+LibName31=lib/component/RoboKUT_conn
+LibName32=lib/component/RoboKUT_conn_KRP
+LibName33=lib/component/RoboKUT_IC
+LibName34=lib/component/RoboKUT_Passive
+LibName35=lib/component/RoboKUT_regul
+LibName36=lib/component/RoboKUT_sensor
+LibName37=lib/component/RoboKUT_special
+LibName38=lib/component/RoboKUT_SW
+LibName39=lib/component/RoboKUT_uC
 [general]
 version=1

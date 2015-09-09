@@ -1,3 +1,9 @@
 (fp_lib_table
-  (lib (name user_conn)(type KiCad)(uri "$(KIPRJMOD)\\user_conn.pretty")(options "")(descr ""))
+  (lib (name Communication)(type KiCad)(uri "$(KIPRJMOD)\\lib\\footprint\\Communication.pretty")(options "")(descr ""))
+  (lib (name conn)(type KiCad)(uri "$(KIPRJMOD)\\lib\\footprint\\conn.pretty")(options "")(descr ""))
+  (lib (name IC)(type KiCad)(uri "$(KIPRJMOD)\\lib\\footprint\\IC.pretty")(options "")(descr ""))
+  (lib (name Passive)(type KiCad)(uri "$(KIPRJMOD)\\lib\\footprint\\Passive.pretty")(options "")(descr ""))
+  (lib (name sensor)(type KiCad)(uri "$(KIPRJMOD)\\lib\\footprint\\sensor.pretty")(options "")(descr ""))
+  (lib (name SW)(type KiCad)(uri "$(KIPRJMOD)\\lib\\footprint\\SW.pretty")(options "")(descr ""))
+  (lib (name uC)(type KiCad)(uri "$(KIPRJMOD)\\lib\\footprint\\uC.pretty")(options "")(descr ""))
 )
