@@ -1,0 +1,27 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP BM1PxxxFJ
+D PWM Control type DC/DC converter IC
+$ENDCMP
+#
+$CMP HT77xxA
+D HT77xxA Series
+K HT77xxA
+$ENDCMP
+#
+$CMP NJM78M05FA
+D NJM78M05FA, Positive 0.5A 35V Linear Regulator, Fixed Output 5V, TO-220F
+K Voltage Regulator 0.5A Positive
+F http://akizukidenshi.com/download/NJM7805FA.pdf
+$ENDCMP
+#
+$CMP TA78L05F
+D TOSHIBA 5V 150mA Reguletor
+K TA78L05F , Reguletor , 5V
+$ENDCMP
+#
+$CMP TL431
+D Precision Programmable Reference
+$ENDCMP
+#
+#End Doc Library
