@@ -1,4 +1,4 @@
-update=2015/09/10 3:15:13
+update=2015/09/10 14:26:53
 version=1
 last_client=kicad
 [pcbnew]
@@ -66,5 +66,15 @@ LibName36=lib/component/RoboKUT_sensor
 LibName37=lib/component/RoboKUT_special
 LibName38=lib/component/RoboKUT_SW
 LibName39=lib/component/RoboKUT_uC
+[schematic_editor]
+version=1
+PageLayoutDescrFile=
+PlotDirectoryName=../
+SubpartIdSeparator=0
+SubpartFirstId=65
+NetFmtName=Pcbnew
+SpiceForceRefPrefix=0
+SpiceUseNetNumbers=0
+LabSize=60
 [general]
 version=1
