@@ -1,0 +1,16 @@
+# PSoC Creator
+
+codegentemp/
+Generated_Source/
+DP8051/
+CortexM3/
+
+*.cywrk.*
+*.cyprj.*
+*.cycdx
+*.cyfit
+*.rpt
+*.uvopt
+*.uvproj
+*_timing.html
+*.svd
