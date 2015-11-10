@@ -1,6 +1,6 @@
 {
-  "name": "ElectronSkeleton",
-  "version": "1.0.0",
+  "name": "PocketSocket",
+  "version": "0.0.1",
   "description": "app",
   "main": "index.js",
   "scripts": {
