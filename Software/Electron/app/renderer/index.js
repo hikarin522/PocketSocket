@@ -7,23 +7,26 @@ require('bootstrap');
 import Rx from 'rx';
 import Cycle from '@cycle/core';
 import {makeDOMDriver, h, hJSX} from '@cycle/dom';
+import view from './view';
 
 import path from 'path';
 import remote from 'remote';
-const __dlldir = remote.getGlobal('__dlldir');
-const edge = remote.require('electron-edge');
 
-const hello = edge.func(path.join(__dlldir, 'hello.cs'));
+import serialInit from './EdgeSerialPort';
 
-hello('World', (error, result) => {
-	console.log(result);
-});
 
-jQuery(() => {
+async () => {
+	const ready = Rx.Observable.fromCallback(jQuery)().toPromise();
+	const serial = await serialInit();
+	const info = await serial.getPortInfo().toPromise();
+	console.log(info);
+
+	await ready;
 	Cycle.run(main, {
 		DOM: makeDOMDriver('body')
 	});
-});
+
+}();
 
 function main({DOM}) {
 	let actions = intent(DOM);
@@ -35,47 +38,21 @@ function main({DOM}) {
 
 function intent(DOM) {
 	return {
-		valid$: DOM.select('#name').events('input')
-			.map(ev => ev.target.validity.valid)
-			.distinctUntilChanged(),
-		name$: DOM.select('#submit').events('submit')
+		toggle$: DOM.select('.easy-sidebar-toggle').events('click')
 			.do(e => e.preventDefault())
-			.map(ev => ev.target.name.value)
-			.distinctUntilChanged()
+			.map(e => e.target.value),
+		sidebarPosition$: DOM.select('[name="sidebarPosition"]').events('change')
+			.map(e => e.target.value)
 	};
 }
 
+var toggle = true;
 function model(actions) {
 	return Rx.Observable.combineLatest(
-		actions.valid$.startWith(false),
-		actions.name$.startWith('')
-			.do(x => console.log(`Name: ${x}`))
-			.selectMany(x => Rx.Observable.fromNodeCallback(hello)(x)),
-		(valid, name) =>
-			({valid, name})
-	);
-}
-
-function view(state$) {
-	return state$.map(({valid, name}) =>
-		<div>
-			<header className="jumbotron">
-				<div className="container">
-					<h1>{name}</h1>
-				</div>
-			</header>
-			<div className="container">
-				<form id="submit" className="form-horizontal" action="">
-					<div className={`form-group has-${valid ? 'success' : 'warning'} has-feedback`}>
-						<label htmlFor="name" className="control-label col-sm-2">Name:</label>
-						<div className="col-sm-10">
-							<input id="name" type="text" className="form-control" pattern="[a-zA-Z0-9_-]{4,12}" autofocus required />
-							<span className={`glyphicon glyphicon-${valid ? 'ok' : 'warning-sign'} form-control-feedback`}></span>
-						</div>
-					</div>
-					<input type="submit" className="col-sm-offset-10" value="submit" />
-				</form>
-			</div>
-		</div>
+		actions.toggle$.startWith('')
+			.map(_ => (toggle = !toggle) ? '.toggled' : ''),
+		actions.sidebarPosition$.startWith('left'),
+		(toggle, sidebarPosition) =>
+			({toggle, sidebarPosition})
 	);
 }
