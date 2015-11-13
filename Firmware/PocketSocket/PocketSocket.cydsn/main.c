@@ -24,6 +24,12 @@ int main()
 {
 	CyGlobalIntEnable;
 	LED_Write(1);
+    
+    VDAC_MAX_Start();
+    VDAC_MIN_Start();
+    Comp_MAX_Start();
+    Comp_MIN_Start();
+    
 	ADC_V_Start();
 	ADC_I_Start();
 	ADC_B_Start();
