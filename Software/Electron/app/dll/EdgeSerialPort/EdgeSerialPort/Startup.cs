@@ -99,6 +99,7 @@ namespace EdgeSerialPort {
 						return new {
 							dispose = (Func<object, Task<object>>)(async _ => {
 								dispose.Dispose();
+								Console.WriteLine("Dispose call");
 								return null;
 							})
 						};
@@ -233,6 +234,7 @@ namespace EdgeSerialPort {
 		public ObservableSerialPort(SerialPort serialPort) {
 			_serialPort = serialPort;
 			_serialPort.Open();
+			Console.WriteLine("Open :{0}", serialPort.PortName);
 		}
 
 		public void Dispose() {
@@ -248,7 +250,8 @@ namespace EdgeSerialPort {
 					var buf = new byte[e.BytesToRead];
 					e.Read(buf, 0, buf.Length);
 					return Encoding.ASCII.GetString(buf);
-				}).Scan(new string[1] { "" }, (Sum, New) => string.Concat(Sum.Last(), New).Split('\n'))
+				})
+				.Scan(new string[1] { "" }, (Sum, New) => string.Concat(Sum.Last(), New).Split('\n'))
 				.SelectMany(i => i.Take(i.Length - 1))
 				.Subscribe(observer);
 
@@ -259,6 +262,7 @@ namespace EdgeSerialPort {
 			return Disposable.Create(() => {
 				rcvEvent.Dispose();
 				errEvent.Dispose();
+				Console.WriteLine("Dispose");
 			});
 		}
 

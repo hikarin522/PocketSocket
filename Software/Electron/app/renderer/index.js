@@ -14,22 +14,22 @@ import remote from 'remote';
 
 import serialInit from './EdgeSerialPort';
 
+import chart from 'chart.js';
 
+var serial = null;
 async () => {
 	const ready = Rx.Observable.fromCallback(jQuery)().toPromise();
-	const serial = await serialInit();
-	const info = await serial.getPortInfo().toPromise();
-	console.log(info);
-
+	serial = await serialInit();
 	await ready;
+	console.log(chart);
 	Cycle.run(main, {
 		DOM: makeDOMDriver('body')
 	});
-
 }();
 
 function main({DOM}) {
 	let actions = intent(DOM);
+	actions.serialPortInfo$ = serial.portInfoSource(250);
 	let state$ = model(actions);
 	return {
 		DOM: view(state$)
@@ -38,21 +38,48 @@ function main({DOM}) {
 
 function intent(DOM) {
 	return {
+		tab$: DOM.select('#bs-example-navbar-collapse-2 a').events('click')
+			.map(e => e.target.value),
 		toggle$: DOM.select('.easy-sidebar-toggle').events('click')
 			.do(e => e.preventDefault())
 			.map(e => e.target.value),
-		sidebarPosition$: DOM.select('[name="sidebarPosition"]').events('change')
-			.map(e => e.target.value)
+		serialPort$: DOM.select('.btn-connect').events('click')
+			.filter(e => !e.target.classList.contains('disabled'))
+			.map(e => e.target.classList.contains('active') ? '' : e.target.value)
 	};
 }
 
-var toggle = true;
 function model(actions) {
+	var toggle = true;
+	var dispose = null;
+	var powerData$ = new Rx.Subject();
+	const regex = /^V\[V\]=, {0,2}(\d{1,3}\.\d),I\[A\]=,(\d\.\d{3})$/;
+
 	return Rx.Observable.combineLatest(
-		actions.toggle$.startWith('')
-			.map(_ => (toggle = !toggle) ? '.toggled' : ''),
-		actions.sidebarPosition$.startWith('left'),
-		(toggle, sidebarPosition) =>
-			({toggle, sidebarPosition})
+		actions.tab$.startWith('list')
+			.scan((acc, current) => ({value: current, change: acc.value !== current}), {value:'', change: true}),
+		actions.toggle$.startWith(false)
+			.map(_ => (toggle = !toggle)),
+		actions.serialPortInfo$.startWith({}),
+		actions.serialPort$.startWith('')
+			.do(e => {
+				if (dispose !== null && e === '') {
+					dispose.dispose();
+				}
+				else if (dispose === null && e !== '') {
+					dispose = serial.openSerialPort(e).subscribe(
+						x => powerData$.onNext(x),
+						e => powerData$.onError(e),
+						() => powerData$.onCompleted()
+					);
+
+				}
+			}),
+		powerData$.map(e => e.match(regex))
+			.filter(e => e[1] != null && e[2] != null)
+			.map(e => ({voltage:e[1],current:e[2],power:e[1]*e[2]}))
+			.startWith({voltage:0,current:0,power:0}).do(e => console.log(e)),
+		(tab, toggle, serialPortInfo, serialPort, powerData) =>
+			({tab, toggle, serialPortInfo, serialPort, powerData})
 	);
 }

@@ -46,8 +46,8 @@ class EdgeSerialPort {
 	}
 	openSerialPort(name) {
 		return Rx.Observable.fromNodeCallback(this.dll.OpenSerialPort)(name)
-			.selectMany(source => Rx.Observable.create(ob => {
-				const dispose = Rx.Observable.fromNodeCallback(source.subscribe)({
+			.selectMany(source => Rx.Observable.create(async ob => {
+				const dispose = await Rx.Observable.fromNodeCallback(source.subscribe)({
 					onNext: (data, cb) => {
 						ob.onNext(data);
 						cb();
@@ -61,7 +61,7 @@ class EdgeSerialPort {
 						cb();
 					}
 				}).toPromise();
-				return async () => await Rx.Observable.fromNodeCallback((await dispose).dispose)(null).toPromise();
+				return async () => await Rx.Observable.fromNodeCallback(dispose.dispose)(null).toPromise();
 			}));
 	}
 }
