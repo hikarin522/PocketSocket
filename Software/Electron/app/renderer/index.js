@@ -14,16 +14,14 @@ import remote from 'remote';
 
 import serialInit from './EdgeSerialPort';
 
-import chart from 'chart.js';
-
 var serial = null;
 async () => {
 	const ready = Rx.Observable.fromCallback(jQuery)().toPromise();
 	serial = await serialInit();
 	await ready;
-	console.log(chart);
 	Cycle.run(main, {
-		DOM: makeDOMDriver('body')
+		DOM: makeDOMDriver('body'),
+		SerialPort: makeSerialPortDriver()
 	});
 }();
 
@@ -32,13 +30,59 @@ function main({DOM}) {
 	actions.serialPortInfo$ = serial.portInfoSource(250);
 	let state$ = model(actions);
 	return {
-		DOM: view(state$)
+		DOM: view(state$),
+		SerialPort: openport(send$)
 	};
+}
+
+function openport(send$) {
+	return send$.map(send => {
+		return {};
+	});
+}
+
+function makeSerialPortInfoDriver() {
+	return request$ => request$.subscribe();
+}
+
+function makeSerialPortDriver() {
+	let ports = {};
+	return serialPort$ => {
+		serialPort$.subscribe(serialPort => {
+			for (var key in serialPort) {
+				if (key === 'Open') {
+					ports[serialPort[key]] = serial.openSerialPort(serialPort[key]);
+				} else if (key === 'Close') {
+					delete ports[serialPort[key]];
+				} else {
+					ports[key].Send(serialPort[key]);
+				}
+			}
+		});
+		return ports;
+	};
+}
+
+function serialPortDriver(name$) {
+	let port = null;
+	name$.subscribe(i => {
+		port = serial.openSerialPort(i.name, i.write$);
+	});
+	return port;
+}
+
+function makeSockDriver(peerId) {
+  let sock = new Sock(peerId);
+  return function sockDriver(outgoing$) {
+    outgoing$.subscribe(outgoing => sock.send(outgoing));
+    return Rx.Observable.fromCallback(sock.onReceive)();
+  };
 }
 
 function intent(DOM) {
 	return {
 		tab$: DOM.select('#bs-example-navbar-collapse-2 a').events('click')
+			.do(e => console.log(e))
 			.map(e => e.target.value),
 		toggle$: DOM.select('.easy-sidebar-toggle').events('click')
 			.do(e => e.preventDefault())

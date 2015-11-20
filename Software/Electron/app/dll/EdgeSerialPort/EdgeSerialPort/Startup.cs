@@ -14,79 +14,97 @@ using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 
 namespace EdgeSerialPort {
+	using EdgeFunc = Func<dynamic, Task<object>>;
 	public class Startup {
 		public async Task<object> Invoke(object input) {
 			return new ISerialPort();
 		}
 	}
 
-	public class ISerialPort : IDisposable {
-		private readonly ObservableManagementClass mcWin32_SerialPort;
-		private readonly ObservableManagementClass mcWin32_PnPEntity;
-		private readonly JavaScriptSerializer serializer;
-
-		public readonly Func<object, Task<object>> GetPortInfo;
-		public readonly Func<dynamic, Task<object>> PortInfoSource;
-		public readonly Func<dynamic, Task<object>> OpenSerialPort;
+	public class ISerialPort {
+		public readonly EdgeFunc getPortInfo;
+		public readonly EdgeFunc openSerialPort;
 
 		public ISerialPort() {
-			mcWin32_SerialPort = new ObservableManagementClass("Win32_SerialPort");
-			mcWin32_PnPEntity = new ObservableManagementClass("Win32_PnPEntity");
-			serializer = new JavaScriptSerializer();
-			GetPortInfo = _GetPortInfo;
-			PortInfoSource = _portInfoSource;
-			OpenSerialPort = _openSerialPort;
+			getPortInfo = _getPortInfo;
+			openSerialPort = _openSerialPort;
 		}
 
-		public void Dispose() {
-			mcWin32_PnPEntity.Dispose();
-			mcWin32_SerialPort.Dispose();
+		private static async Task<object> _getPortInfo(object input) {
+			return await ObservableManagement.Object("Win32_PnPEntity")
+				.Merge(ObservableManagement.Object("Win32_SerialPort"))
+				.Select(i => Tuple.Create(i, i["Name"] as string))
+				.WhereDispose(i => i.Item2 != null, i => i.Item1)
+				.Join(
+					SerialPort.GetPortNames().ToObservable()
+						.Select(i => Tuple.Create(i, new Regex(i + @"[\p{P}\p{Z}$]"))),
+					_ => Observable.Never<Unit>(), _ => Observable.Never<Unit>(),
+					Tuple.Create
+				)
+				.WhereDispose(i => i.Item2.Item2.IsMatch(i.Item1.Item2), i => i.Item1.Item1)
+				.Select(i => {
+					var list = new Dictionary<string, string>();
+					foreach (var prop in i.Item1.Item1.Properties)
+						list.Add(prop.Name, prop.Value as string);
+					var ret = Tuple.Create(i.Item2.Item1, i.Item1.Item1.ClassPath.ClassName, list);
+					i.Item1.Item1.Dispose();
+					return ret;
+				})
+				.GroupBy(i => i.Item1)
+				.SelectMany(async i => Tuple.Create(i.Key, await i.ToDictionary(j => j.Item2, j => j.Item3)))
+				.ToDictionary(i => i.Item1, i => i.Item2);
 		}
 
 		private async Task<object> _openSerialPort(dynamic input) {
-			var portName = input as string;
-			int baudRate = 9600, dataBits = 8;
-			var parity = Parity.None;
-			var stopBits = StopBits.One;
-
-			if (portName == null) {
-				try { portName = input.portName as string; } catch { }
-				try { baudRate = (input.baudRate is int) ? (int)input.baudRate : 9600; } catch { }
-				try {
-					switch (input.parity as string) {
-					case "Even": parity = Parity.Even; break;
-					case "Odd": parity = Parity.Odd; break;
-					case "Mark": parity = Parity.Mark; break;
-					case "Space": parity = Parity.Space; break;
-					default: parity = Parity.None; break;
-					}
-				}
-				catch { }
-				try { dataBits = input.dataBits is int ? (int)input.dataBits : 8; } catch { }
-				try {
-					switch (input.stopBits as string) {
-					case "None": stopBits = StopBits.None; break;
-					case "OnePointFive": stopBits = StopBits.OnePointFive; break;
-					case "Two": stopBits = StopBits.Two; break;
-					default: stopBits = StopBits.One; break;
-					}
-				}
-				catch { }
-			}
-
-			if (portName == null)
-				return null;
-
+			ObservableSerialPort serialPort = null;
 			try {
-				var serialPort = new ObservableSerialPort(new SerialPort(portName, baudRate, parity, dataBits, stopBits));
-				var source = serialPort.Publish().RefCount();
+				var portName = input as string;
+				var hasOptions = false;
+				if (portName == null) {
+					portName = input.portName as string;
+					hasOptions = true;
+				}
+				serialPort = new ObservableSerialPort(portName);
+
+				if (hasOptions) {
+					try { serialPort.BaudRate = (int)input.baudRate; } catch { }
+					try { serialPort.DataBits = (int)input.dataBits; } catch { }
+					try { serialPort.Parity = (Parity)Enum.Parse(typeof(Parity), input.parity as string); } catch { }
+					try { serialPort.StopBits = (StopBits)Enum.Parse(typeof(StopBits), input.stopBits as string); } catch { }
+				}
+
+				var regex = new Regex(@"V\[V\]=,\s{0,2}(\d{1,3}\.\d),I\[A\]=,(\d\.\d{3})", RegexOptions.Compiled | RegexOptions.Singleline);
+
+				var source = serialPort.Where(i => i.Item1 == typeof(SerialData))
+					.Select(i => i.Item2)
+					.Scan(Tuple.Create(string.Empty, Enumerable.Empty<Tuple<double, double>>()), (Sum, New) => {
+						var split = regex.Split(Sum.Item1 + New);
+						var filter = split.Where((_, i) => i % 3 != 0).Select(double.Parse);
+						var capt = filter.Where((_, i) => i % 2 == 0).Zip(filter.Where((_, i) => i % 2 != 0), Tuple.Create);
+						return Tuple.Create(split.Last(), capt);
+					}).SelectMany(i => i.Item2)
+					.Select(i => new { V = i.Item1, I = i.Item2, W = i.Item1 * i.Item2 })
+					.Finally(serialPort.Dispose)
+					.Publish();
+
+				serialPort.Open();
+				var connect = source.Connect();
+
 				return new {
-					subscribe = (Func<dynamic, Task<object>>)(async ob => {
-						Func<object, Task<object>> onNext, onError = null, onCompleted = null;
-						onNext = ob as Func<object, Task<object>>;
-						try { onNext = ob.onNext as Func<object, Task<object>>; } catch { }
-						try { onError = ob.onError as Func<object, Task<object>>; } catch { }
-						try { onCompleted = ob.onCompleted as Func<object, Task<object>>; } catch { }
+					dispose = (EdgeFunc)(async _ => {
+						connect.Dispose();
+						serialPort.Dispose();
+						return null;
+					}),
+					write = (EdgeFunc)(async str => { serialPort.Write(str); return null; }),
+					subscribe = (EdgeFunc)(async ob => {
+						EdgeFunc onNext, onError = null, onCompleted = null;
+						onNext = ob as EdgeFunc;
+						if (onNext == null) {
+							try { onNext = ob.onNext as EdgeFunc; } catch { }
+							try { onError = ob.onError as EdgeFunc; } catch { }
+							try { onCompleted = ob.onCompleted as EdgeFunc; } catch { }
+						}
 						if (ob == null)
 							return null;
 
@@ -96,178 +114,78 @@ namespace EdgeSerialPort {
 							() => { if (onCompleted != null) onCompleted(null); }
 						);
 
-						return new {
-							dispose = (Func<object, Task<object>>)(async _ => {
-								dispose.Dispose();
-								Console.WriteLine("Dispose call");
-								return null;
-							})
-						};
-					})
-				};
-			}
-			catch { }
-
-			return null;
-		}
-
-		private async Task<object> _GetPortInfo(object _) {
-			return await _createSource(0).Select(i => serializer.Serialize(i)).FirstAsync();
-		}
-
-		private async Task<object> _portInfoSource(object input) {
-			if (!(input is int) || (int)input <= 0)
-				return null;
-
-			var info = _createSource((int)input)
-				.Select(i => serializer.Serialize(i))
-				.Publish().RefCount();
-
-			return new {
-				subscribe = (Func<dynamic, Task<object>>)(async ob => {
-					Func<object, Task<object>> onNext, onError = null, onCompleted = null;
-					onNext = ob as Func<object, Task<object>>;
-					if (onNext == null) {
-						try { onNext = ob.onNext as Func<object, Task<object>>; } catch { }
-						try { onError = ob.onError as Func<object, Task<object>>; } catch { }
-						try { onCompleted = ob.onCompleted as Func<object, Task<object>>; } catch { }
-					}
-					if (onNext == null)
-						return null;
-
-					var dispose = info.Subscribe(
-						i => onNext(i),
-						e => { if (onError != null) onError(e); },
-						() => { if (onCompleted != null) onCompleted(null); }
-					);
-
-					return new {
-						dispose = (Func<object, Task<object>>)(async _ => {
+						return (EdgeFunc)(async _ => {
 							dispose.Dispose();
 							return null;
-						})
-					};
-				})
-			};
-		}
-
-		private IObservable<IDictionary<string, IDictionary<string, Dictionary<string, string>>>> _createSource(int ms) {
-			return Observable.Interval(TimeSpan.FromMilliseconds(ms)).StartWith(0)
-				.Select(_ => SerialPort.GetPortNames())
-				.Scan(Tuple.Create(new string[0], new string[0]), (Old, New) => Tuple.Create(Old.Item2, New))
-				.Select(i => Tuple.Create(i.Item1.Except(i.Item2), i.Item2.Except(i.Item1)))
-				.Where(i => i.Item1.Count() > 0 || i.Item2.Count() > 0)
-				.Select(async i => Tuple.Create(i.Item1, await i.Item2.ToObservable()
-					.Select(j => Tuple.Create(j, new Regex(j + @"[\p{P}\p{Z}$]")))
-					.Join(
-						mcWin32_SerialPort.Merge(mcWin32_PnPEntity)
-							.Select(j => Tuple.Create(j.ClassPath.ClassName, j["Name"] as string, j.Properties))
-							.Where(j => j.Item2 != null),
-						_ => Observable.Never<Unit>(),
-						_ => Observable.Never<Unit>(),
-						Tuple.Create
-					)
-					.Where(j => j.Item1.Item2.IsMatch(j.Item2.Item2))
-					.Select(j => {
-						var list = new Dictionary<string, string>();
-						foreach (var prop in j.Item2.Item3)
-							list.Add(prop.Name, prop.Value as string);
-						return Tuple.Create(j.Item1.Item1, j.Item2.Item1, list);
+						});
 					})
-					.GroupBy(j => j.Item1)
-					.SelectMany(async j => Tuple.Create(j.Key, await j.ToDictionary(k => k.Item2, k => k.Item3)))
-					.ToArray()
-				))
-				.Concat()
-				.Scan(new Dictionary<string, IDictionary<string, Dictionary<string, string>>>(), (sum, New) => {
-					foreach (var i in New.Item1)
-						sum.Remove(i);
-					foreach (var i in New.Item2)
-						sum.Add(i.Item1, i.Item2);
-					return sum;
-				});
-		}
-	}
-
-	class ObservableManagementClass : IObservable<ManagementBaseObject>, IDisposable {
-		private readonly ManagementClass _mc;
-		private readonly ManagementOperationObserver _observer;
-		private readonly IObservable<ManagementBaseObject> _observable;
-		private ReplaySubject<ManagementBaseObject> _subject = null;
-		private bool _isSubscribe = false;
-		public string ClassName { get { return _mc.ClassPath.ClassName; } }
-
-		public ObservableManagementClass(string className) {
-			_mc = new ManagementClass(className);
-			_observer = new ManagementOperationObserver();
-			_observable = Observable.FromEventPattern<ObjectReadyEventHandler, ObjectReadyEventArgs>(
-					h => _observer.ObjectReady += h, h => _observer.ObjectReady -= h
-				).TakeUntil(Observable.FromEventPattern<CompletedEventHandler, CompletedEventArgs>(
-					h => _observer.Completed += h, h => _observer.Completed -= h
-				)).Select(e => e.EventArgs.NewObject)
-				.Finally(() => _isSubscribe = false);
-		}
-
-		public void Dispose() {
-			_observer.Cancel();
-			_mc.Dispose();
-		}
-
-		public IDisposable Subscribe(IObserver<ManagementBaseObject> observer) {
-			if (!_isSubscribe) {
-				_isSubscribe = true;
-				_subject = new ReplaySubject<ManagementBaseObject>();
-				_observable.Subscribe(
-					i => _subject.OnNext(i),
-					e => _subject.OnError(e),
-					() => _subject.OnCompleted()
-				);
-				_mc.GetInstances(_observer);
+				};
+			} catch {
+				if (serialPort != null)
+					serialPort.Dispose();
+				return null;
 			}
-			return _subject.Subscribe(observer);
 		}
 	}
 
-	class ObservableSerialPort : IObservable<string>, IDisposable {
-		private readonly SerialPort _serialPort;
-
-		public ObservableSerialPort(SerialPort serialPort) {
-			_serialPort = serialPort;
-			_serialPort.Open();
-			Console.WriteLine("Open :{0}", serialPort.PortName);
+	static class ObservableManagement {
+		private static IObservable<ManagementBaseObject> observableFactory(ManagementClass mc) {
+			var ob = new ManagementOperationObserver();
+			return Observable.FromEventPattern<ObjectReadyEventHandler, ObjectReadyEventArgs>(
+					h => { ob.ObjectReady += h; mc.GetInstances(ob); }, h => ob.ObjectReady -= h
+				).TakeUntil(Observable.FromEventPattern<CompletedEventHandler, CompletedEventArgs>(
+					h => ob.Completed += h, h => ob.Completed -= h
+				)).Select(e => e.EventArgs.NewObject);
 		}
 
-		public void Dispose() {
-			_serialPort.Dispose();
+		public static IObservable<ManagementBaseObject> Object(string name) {
+			return Observable.Using(
+				() => new ManagementClass(name),
+				observableFactory
+			);
 		}
 
-		public IDisposable Subscribe(IObserver<string> observer) {
-			var rcvEvent = Observable.FromEventPattern<SerialDataReceivedEventHandler, SerialDataReceivedEventArgs>(
-					h => _serialPort.DataReceived += h, h => _serialPort.DataReceived -= h
-				).TakeWhile(e => e.EventArgs.EventType != SerialData.Eof)
-				.Select(e => e.Sender).Cast<SerialPort>()
-				.Select(e => {
-					var buf = new byte[e.BytesToRead];
-					e.Read(buf, 0, buf.Length);
-					return Encoding.ASCII.GetString(buf);
-				})
-				.Scan(new string[1] { "" }, (Sum, New) => string.Concat(Sum.Last(), New).Split('\n'))
-				.SelectMany(i => i.Take(i.Length - 1))
-				.Subscribe(observer);
-
-			var errEvent = Observable.FromEventPattern<SerialErrorReceivedEventHandler, SerialErrorReceivedEventArgs>(
-					h => _serialPort.ErrorReceived += h, h => _serialPort.ErrorReceived -= h
-				).Subscribe(e => observer.OnError(new Exception(e.EventArgs.EventType.ToString())));
-
-			return Disposable.Create(() => {
-				rcvEvent.Dispose();
-				errEvent.Dispose();
-				Console.WriteLine("Dispose");
+		public static IObservable<T> WhereDispose<T>(this IObservable<T> ob, Func<T, bool> predicate) where T : IDisposable {
+			return ob.Where(i => {
+				if (predicate(i))
+					return true;
+				i.Dispose();
+				return false;
 			});
 		}
 
-		public void Send(string text) {
-			_serialPort.Write(text);
+		public static IObservable<T1> WhereDispose<T1, T2>(this IObservable<T1> ob, Func<T1, bool> predicate, Func<T1, T2> selector) where T2 : IDisposable {
+			return ob.Where(i => {
+				if (predicate(i))
+					return true;
+				selector(i).Dispose();
+				return false;
+			});
+		}
+	}
+
+	class ObservableSerialPort : SerialPort, IObservable<Tuple<Type, string>> {
+		public ObservableSerialPort(string name) : base(name) {
+		}
+
+		public IDisposable Subscribe(IObserver<Tuple<Type, string>> observer) {
+			var rcvEvent = Observable.FromEventPattern<SerialDataReceivedEventHandler, SerialDataReceivedEventArgs>(
+					h => DataReceived += h, h => DataReceived -= h
+				);
+
+			var rcvEof = rcvEvent.Where(e => e.EventArgs.EventType == SerialData.Eof);
+			var rcvChars = rcvEvent.Select(e => Tuple.Create(e.EventArgs.EventType.GetType(), ReadExisting()));
+
+			var errEvent = Observable.FromEventPattern<SerialErrorReceivedEventHandler, SerialErrorReceivedEventArgs>(
+					h => ErrorReceived += h, h => ErrorReceived -= h
+				).Select(e => Tuple.Create(e.EventArgs.EventType.GetType(), e.EventArgs.EventType.ToString()));
+
+			var pinEvent = Observable.FromEventPattern<SerialPinChangedEventHandler, SerialPinChangedEventArgs>(
+					h => PinChanged += h, h => PinChanged -= h
+				).Select(e => Tuple.Create(e.EventArgs.EventType.GetType(), e.EventArgs.EventType.ToString()));
+			
+			return Observable.Merge(rcvChars, errEvent, pinEvent)
+				.TakeUntil(rcvEof).Subscribe(observer);
 		}
 	}
 }
