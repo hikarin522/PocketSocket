@@ -19,8 +19,8 @@ export default async function () {
 }
 
 class EdgeSerialPort {
-	async getPortInfo() {
-		return await Rx.Observable.fromNodeCallback(this.dll.getPortInfo)(null).toPromise();
+	getPortInfo() {
+		return Rx.Observable.fromNodeCallback(this.dll.getPortInfo)(null);
 	}
 	async openSerialPort(name) {
 		const port = await Rx.Observable.fromNodeCallback(this.dll.openSerialPort)(name).toPromise();
