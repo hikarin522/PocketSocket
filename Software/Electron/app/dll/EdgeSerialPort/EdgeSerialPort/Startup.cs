@@ -36,7 +36,7 @@ namespace EdgeSerialPort {
 				.Select(i => Tuple.Create(i, i["Name"] as string))
 				.WhereDispose(i => i.Item2 != null, i => i.Item1)
 				.Join(
-					SerialPort.GetPortNames().ToObservable()
+					SerialPort.GetPortNames().ToObservable().Distinct()
 						.Select(i => Tuple.Create(i, new Regex(i + @"[\p{P}\p{Z}$]"))),
 					_ => Observable.Never<Unit>(), _ => Observable.Never<Unit>(),
 					Tuple.Create
@@ -53,7 +53,7 @@ namespace EdgeSerialPort {
 				.GroupBy(i => i.Item1)
 				.SelectMany(async i => Tuple.Create(i.Key, await i.ToDictionary(j => j.Item2, j => j.Item3)))
 				.ToDictionary(i => i.Item1, i => i.Item2);
-		}
+        }
 
 		private async Task<object> _openSerialPort(dynamic input) {
 			ObservableSerialPort serialPort = null;
@@ -82,17 +82,16 @@ namespace EdgeSerialPort {
 						var filter = split.Where((_, i) => i % 3 != 0).Select(double.Parse);
 						var capt = filter.Where((_, i) => i % 2 == 0).Zip(filter.Where((_, i) => i % 2 != 0), Tuple.Create);
 						return Tuple.Create(split.Last(), capt);
-					}).SelectMany(i => i.Item2)
+					})
+					.SelectMany(i => i.Item2)
 					.Select(i => new { V = i.Item1, I = i.Item2, W = i.Item1 * i.Item2 })
 					.Finally(serialPort.Dispose)
-					.Publish();
+					.Publish().RefCount();
 
 				serialPort.Open();
-				var connect = source.Connect();
 
 				return new {
 					dispose = (EdgeFunc)(async _ => {
-						connect.Dispose();
 						serialPort.Dispose();
 						return null;
 					}),
@@ -121,8 +120,9 @@ namespace EdgeSerialPort {
 					})
 				};
 			} catch {
-				if (serialPort != null)
+				if (serialPort != null) {
 					serialPort.Dispose();
+				}
 				return null;
 			}
 		}
@@ -166,6 +166,10 @@ namespace EdgeSerialPort {
 
 	class ObservableSerialPort : SerialPort, IObservable<Tuple<Type, string>> {
 		public ObservableSerialPort(string name) : base(name) {
+			Console.WriteLine("Open SerialPort: {0}", name);
+			Disposed += (sender, e) => {
+				Console.WriteLine("Close SerialPort: {0}", PortName);
+			};
 		}
 
 		public IDisposable Subscribe(IObserver<Tuple<Type, string>> observer) {
@@ -184,7 +188,7 @@ namespace EdgeSerialPort {
 					h => PinChanged += h, h => PinChanged -= h
 				).Select(e => Tuple.Create(e.EventArgs.EventType.GetType(), e.EventArgs.EventType.ToString()));
 			
-			return Observable.Merge(rcvChars, errEvent, pinEvent)
+			return Observable.Merge(rcvChars, errEvent, pinEvent).Do(x => Console.WriteLine("{0} : {1}", x.Item1, x.Item2))
 				.TakeUntil(rcvEof).Subscribe(observer);
 		}
 	}
