@@ -12,7 +12,8 @@
   "devDependencies": {
     "electron-compilers": "^1.0.1",
     "electron-packager": "^5.1.1",
-    "electron-prebuilt": "^0.34.3",
+    "electron-prebuilt": "^0.35.1",
     "gulp": "^3.9.0"
-  }
+  },
+  "dependencies": {}
 }

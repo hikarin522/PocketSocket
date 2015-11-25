@@ -9,7 +9,7 @@
   "author": "hikari",
   "license": "MIT",
   "dependencies": {
-    "bootstrap": "^3.3.5",
+    "bootstrap": "^3.3.6",
     "chart.js": "^1.0.2",
     "electron-compile": "^1.0.1",
     "electron-edge": "^4.0.1-pre1",
@@ -19,7 +19,7 @@
     "react-chartjs": "^0.6.0",
     "react-dom": "^0.14.3",
     "react-router": "^1.0.0",
-    "rx": "^4.0.6",
+    "rx": "^4.0.7",
     "rx-react": "^0.3.0"
   }
 }
