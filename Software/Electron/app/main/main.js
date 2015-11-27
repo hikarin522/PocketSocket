@@ -1,13 +1,11 @@
 'use strict';
 
-import app from 'app';
-import BrowserWindow from 'browser-window';
-import CrashReporter from 'crash-reporter';
+import {app, BrowserWindow, crashReporter} from 'electron';
 import path from 'path';
 
 export default class MainWindow {
 	constructor() {
-		CrashReporter.start();
+		crashReporter.start();
 
 		app.on('window-all-closed', () => {
 			if (process.platform != 'darwin')
@@ -25,7 +23,7 @@ export default class MainWindow {
 		this.window = new BrowserWindow(options);
 		this.window.loadUrl(path);
 		if (!__isproduction)
-			this.window.openDevTools();
+			this.window.webContents.openDevTools();
 		this.window.on('closed', () => {
 			this.window = null;
 		});
