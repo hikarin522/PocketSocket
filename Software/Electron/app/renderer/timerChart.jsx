@@ -41,7 +41,7 @@ export default React.createClass({
 		return (
 			<div style={{paddingTop:"20px"}}>
 				<h3 style={{textAlign: 'center'}}>
-					平均: {format.format(this.state.avePower)} [W]　　最大: {format.format(this.state.maxPower)} [W]
+					AVE: {format.format(this.state.avePower)} [W]　　MAX: {format.format(this.state.maxPower)} [W]
 				</h3>
 				<Row className style={{textAlign: 'center'}}>
 					<Col xs={5} xsOffset={3}><h3>
