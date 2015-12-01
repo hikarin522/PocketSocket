@@ -45,9 +45,11 @@ export default React.createClass({
 			}).publish().refCount();
 
 		const read$ = serialPort$.map(({serialPort}) => {
-			const read = serialPort.read.where(Boolean).publish().refCount();
+			const read = serialPort.read.where(Boolean).startWith({V:0,I:0,W:0}).publish().refCount();
 			//const read = Observable.interval(2000).map(() => ({V:Math.random()*800,I:Math.random()*3,W:Math.random()*500})).publish().refCount();
-			const timeout = read.debounce(1500).map(() => ({V:0,I:0,W:0}));
+			const timeout = read.debounce(1500).selectMany(() => Observable.interval(1000)
+					.takeUntil(read).map(() => ({V:0,I:0,W:0}))
+				);
 			const recData$ = Observable.merge(read, timeout).timestamp()
 				.scan(({V, I, W}, {value, timestamp}) => ({
 					V: V.push({x: timestamp, y: value.V}),
@@ -55,7 +57,8 @@ export default React.createClass({
 					W: W.push({x: timestamp, y: value.W}),
 				}), {V: Immutable.List(), I: Immutable.List(), W:Immutable.List()})
 				.publish();
-			return {recData$, dispose: recData$.connect()};
+			const dispose = recData$.connect();
+			return {recData$, dispose};
 		});
 
 		return Observable.merge(
@@ -100,7 +103,7 @@ export default React.createClass({
 						<Nav activeKey={this.state.activeKey}>
 							<NavItem eventKey="" href="#" >Home</NavItem>
 							<NavItem eventKey="setting" href="#/setting">Setting</NavItem>
-							<NavItem eventKey="chart" href="#/chart">Chart</NavItem>
+							<NavItem eventKey="chart" href={Boolean(this.state.portName) ? "#/chart" : "#"} disabled={!Boolean(this.state.portName)}>Chart</NavItem>
 						</Nav>
 						<Nav pullRight activeKey={this.state.activeKey}>
 							<NavItem eventKey="about" href="#/about">About</NavItem>

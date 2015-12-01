@@ -2,7 +2,7 @@
 
 import {Observable} from 'rx';
 import React from 'react';
-import {StateStreamMixin, FuncSubject} from 'rx-react';
+import {FuncSubject} from 'rx-react';
 import {Button, DropdownButton, ButtonInput, MenuItem, Glyphicon, Input, FormControls, Label} from 'react-bootstrap';
 import Immutable from 'immutable';
 import remote from 'remote';
