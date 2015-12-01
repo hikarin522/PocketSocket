@@ -7,12 +7,10 @@ import {Jumbotron, PageHeader, Tabs, Tab, Button, ButtonToolbar, Grid, Row, Col,
 import Highcharts from 'react-highcharts';
 import Immutable from 'immutable';
 
-
 export default React.createClass({
 	mixins: [StateStreamMixin],
 
 	getInitialState() {
-
 		return {
 			isCounting: false,
 			period: 30,
@@ -45,17 +43,25 @@ export default React.createClass({
 const Chart = React.createClass({
 
 	componentDidMount() {
-
-
-		this.dispose = this.props.start.subscribe(() => {
-			const chart = this.refs.chart.getChart();
+		const chart = this.refs.chart.getChart();
 			const power = chart.get('power');
 			const voltage = chart.get('voltage');
 			const current = chart.get('current');
 			const rec$ = this.props.recData$;
-			const timer$ = rec$.take(1).selectMany(() => Observable.interval(1000))
-				.takeWhile(i => i <= this.props.period).publish().refCount();
-			timer$.subscribe(x => this.props.counter(this.props.period - i));
+			const period = this.props.period;
+
+		this.dispose = this.props.start.subscribe(() => {
+
+			const timer$ = rec$.take(1).do(({W}) => {
+					power.setData([], false);
+					voltage.setData([], false);
+					current.setData([], false);
+					const start = W.last().x - 5000;
+					chart.xAxis[0].update({min: start, max: start + period * 1000 + 5000});
+				})
+				.selectMany(() => Observable.interval(1000))
+				.takeWhile(i => i <= period).publish().refCount();
+			timer$.subscribe(x => this.props.counter(period - x));
 			rec$.takeUntil(timer$.last()).subscribe(({W, V, I}) => {
 				power.addPoint(W.last(), false);
 				voltage.addPoint(V.last(), false);
@@ -66,7 +72,7 @@ const Chart = React.createClass({
 	},
 
 	shouldComponentUpdate() {
-		return true;
+		return false;
 	},
 
 	componentWillUnmount() {

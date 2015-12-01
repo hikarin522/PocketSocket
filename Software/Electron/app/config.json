@@ -140,7 +140,7 @@
 		"borderColor": "#00ffff",
 		"plotBorderWidth": 0,
 		"borderWidth": 0,
-		"type": "areaspline",
+		"type": "spline",
 		"borderRadius": 0
 	}
 }
