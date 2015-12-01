@@ -1,0 +1,146 @@
+{
+	"legend": {
+		"enabled": true
+	},
+	"exporting": {
+		"enabled": true
+	},
+	"navigator": {
+		"baseSeries": "power"
+	},
+	"series": [
+		{
+			"name": "Power",
+			"id": "power",
+			"yAxis": "powerAxis",
+			"dataLabels": {
+				"enabled": false,
+				"format": "{y} [W]"
+			},
+			"tooltip": {
+				"valueDecimals": 2,
+				"valueSuffix": " [W]"
+			},
+			"turboThreshold": 0,
+			"data": []
+		},
+		{
+			"name": "Voltage",
+			"id": "voltage",
+			"yAxis": "voltageAxis",
+			"dataLabels": {
+				"enabled": false,
+				"format": "{y} [V]"
+			},
+			"tooltip": {
+				"valueDecimals": 2,
+				"valueSuffix": " [V]"
+			},
+			"turboThreshold": 0,
+			"data": []
+		},
+		{
+			"name": "Current",
+			"id": "current",
+			"yAxis": "currentAxis",
+			"dataLabels": {
+				"enabled": false,
+				"format": "{y} [A]"
+			},
+			"tooltip": {
+				"valueDecimals": 2,
+				"valueSuffix": " [A]"
+			},
+			"turboThreshold": 0,
+			"data": []
+		}
+	],
+	"title": {
+		"text": "Real Time Data"
+	},
+	"credits": {
+		"enabled": false
+	},
+	"yAxis": [
+		{
+			"id": "powerAxis",
+			"title": {
+				"text": "Power [W]"
+			},
+			"showEmpty": false,
+			"opposite": false
+		},
+		{
+			"id": "voltageAxis",
+			"title": {
+				"text": "Voltage [V]"
+			},
+			"showEmpty": false,
+			"opposite": true
+		},
+		{
+			"id": "currentAxis",
+			"title": {
+				"text": "Current [A]"
+			},
+			"showEmpty": false,
+			"opposite": true
+		}
+	],
+	"rangeSelector": {
+		"enabled": true,
+		"inputDateFormat": "%H:%M:%S",
+		"inputEditDateFormat": "%H:%M:%S",
+		"buttons": [
+			{
+				"type": "second",
+				"count": 10,
+				"text": "10s"
+			},
+			{
+				"type": "second",
+				"count": 30,
+				"text": "30s"
+			},
+			{
+				"type": "minute",
+				"count": 1,
+				"text": "1m"
+			},
+			{
+				"type": "minute",
+				"count": 2,
+				"text": "2m"
+			},
+			{
+				"type": "minute",
+				"count": 5,
+				"text": "5m"
+			},
+			{
+				"type": "all",
+				"text": "All"
+			}
+		]
+	},
+	"chart": {
+		"shadow": false,
+		"plotShadow": false,
+		"showAxes": true,
+		"animation": true,
+		"width": null,
+		"height": null,
+		"zoomType": "xy",
+		"alignTicks": false,
+		"ignoreHiddenSeries": true,
+		"plotBackgroundColor": "#ffffff",
+		"backgroundColor": "#ffffff",
+		"inverted": false,
+		"plotBorderColor": "#c0c0c0",
+		"borderColor": "#00ffff",
+		"plotBorderWidth": 0,
+		"borderWidth": 0,
+		"type": "areaspline",
+		"borderRadius": 0
+	}
+}

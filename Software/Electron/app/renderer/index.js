@@ -23,7 +23,6 @@ async () => {
 	await Observable.fromEvent(document, 'DOMContentLoaded').first().toPromise();
 	serial = await serialInit();
 
-	console.log(global.Highcharts);
 	global.Highcharts.setOptions({
 		global: {
 			useUTC: false
