@@ -1,21 +1,18 @@
 'use strict';
 
-import {Observable} from 'rx';
 import React from 'react';
-import {StateStreamMixin, FuncSubject} from 'rx-react';
-import {Tabs, Tab, Button, Label, Table, PageHeader, Nav, NavItem} from 'react-bootstrap';
+import {StateStreamMixin, PropsMixin, FuncSubject} from 'rx-react';
+import {Nav, NavItem} from 'react-bootstrap';
 
 export default React.createClass({
-	mixins: [StateStreamMixin],
+	mixins: [StateStreamMixin, PropsMixin],
 
 	getInitialState() {
 		return {menu: this.props.location.pathname.split('/').pop()};
 	},
 
 	getStateStream() {
-		this.selectMenu = FuncSubject.create((eventKey, href) => ({eventKey, href}));
-
-		return this.selectMenu.do(i => location.href = i.href).map(i => ({menu: i.eventKey}));
+		return this.propsStream.map(x => ({menu: x.location.pathname.split('/').pop()}));
 	},
 
 	render() {
@@ -25,8 +22,8 @@ export default React.createClass({
 
 		return (
 			<div>
-				<Nav bsStyle="tabs" justified activeKey={this.state.menu} onSelect={this.selectMenu}>
-					<NavItem eventKey="serialPort" href="#/setting/serialport">Serial Port Setting</NavItem>
+				<Nav bsStyle="tabs" justified activeKey={this.state.menu}>
+					<NavItem eventKey="serialport" href="#/setting/serialport">Serial Port Setting</NavItem>
 					<NavItem eventKey="chart" href="#/setting/chart">Chart Setting</NavItem>
 				</Nav>
 				{children}

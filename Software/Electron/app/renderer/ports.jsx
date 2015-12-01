@@ -3,7 +3,7 @@
 import {Observable} from 'rx';
 import React from 'react';
 import {StateStreamMixin, FuncSubject} from 'rx-react';
-import {Tabs, Tab, Button, Label, Table} from 'react-bootstrap';
+import {Tabs, Tab, Button, Label, Table, Glyphicon} from 'react-bootstrap';
 
 export default React.createClass({
 	mixins: [StateStreamMixin],
@@ -11,25 +11,21 @@ export default React.createClass({
 	getInitialState() {
 		return {
 			portInfo: {},
-			isLoading: false,
-			connect: this.props.portSelect.first()
+			isLoading: false
 		};
 	},
 
 	getStateStream() {
 		this.handleClick = FuncSubject.create();
-		const infoReq$ = this.handleClick.startWith(null)
+		const infoReq$ = this.handleClick.startWith(null);
 		const portInfo$ = infoReq$.selectMany(() => this.props.serial.getPortInfo());
 
-		portInfo$.where(x => this.state.connect && !x[this.state.connect])
+		portInfo$.where(x => this.props.portName && !x[this.props.portName])
 			.subscribe(() => this.props.portSelect({target:{value:''}}));
-
-		const connSelect$ = this.props.portSelect.map(connect => ({connect}));
 
 		return Observable.merge(
 			infoReq$.map(() => ({isLoading: true})),
-			portInfo$.map(portInfo => ({portInfo, isLoading: false})),
-			connSelect$
+			portInfo$.map(portInfo => ({portInfo, isLoading: false}))
 		);
 	},
 
@@ -43,12 +39,12 @@ export default React.createClass({
 
 		const tab = Object.keys(portInfo).map((name, i) =>
 			<Tab eventKey={i} title={name} key={name}>
-				<Port label={name} info={portInfo[name]} onClick={this.props.portSelect} connect={this.state.connect} />
+				<Port label={name} info={portInfo[name]} onClick={this.props.portSelect} portName={this.props.portName} />
 			</Tab>
 		);
 
 		return (
-			<Tabs defaultActiveKey={-1} position="left" bsStyle="pills">
+			<Tabs defaultActiveKey={-1} position="left" bsStyle="pills" style={{paddingTop: '20px'}}>
 				<Tab eventKey={-1} title="Setting"><PortSetting {...settingProps} /></Tab>
 				{tab}
 			</Tabs>
@@ -61,7 +57,7 @@ class PortSetting extends React.Component {
 		const btnText = this.props.isLoading ? 'Loading...' : 'Reload';
 		return (
 			<form className="form-horizontal" style={{paddingTop: '20px'}}>
-				<Button className="col-md-2" bsStyle="primary" disabled={this.props.isLoading} onClick={this.props.onClick}>{btnText}</Button>
+				<Button className="col-md-2" bsStyle="primary" disabled={this.props.isLoading} onClick={this.props.onClick}><Glyphicon glyph="refresh" /> {btnText}</Button>
 				<span className="col-md-10" style={{position: 'relative', left: '50px'}}><h4>Rescan Serial Port</h4></span>
 			</form>
 		);
@@ -100,15 +96,13 @@ class MC extends React.Component {
 
 class Port extends React.Component {
 	render() {
-		const {label, info, connect, onClick} = this.props;
+		const {label, info, portName, onClick} = this.props;
 		const mclist = Object.keys(info).map(mc => <MC info={info[mc]} mc={mc} key={mc} />)
-		const active = connect === label;
+		const active = portName === label;
 		const btnOpts = {
-			active,
-			onClick,
+			active, onClick, label,
 			bsSize: 'lg',
-			label,
-			disabled: active === false && connect !== '',
+			disabled: active === false && portName !== '',
 			value: active ? '' : label,
 			style: {
 				position: 'relative',
@@ -124,6 +118,29 @@ class Port extends React.Component {
 					<Button {...btnOpts}>{btnText}</Button>
 				</h2>
 				{mclist}
+			</div>
+		);
+	}
+}
+
+class Loading extends React.Component {
+	render() {
+		if (!this.props.active)
+			return null;
+		return (
+			<div className="sk-fading-circle" style={{position:'relative',left:'70px',top:'-125px'}}>
+				<div className="sk-circle1 sk-circle"></div>
+				<div className="sk-circle2 sk-circle"></div>
+				<div className="sk-circle3 sk-circle"></div>
+				<div className="sk-circle4 sk-circle"></div>
+				<div className="sk-circle5 sk-circle"></div>
+				<div className="sk-circle6 sk-circle"></div>
+				<div className="sk-circle7 sk-circle"></div>
+				<div className="sk-circle8 sk-circle"></div>
+				<div className="sk-circle9 sk-circle"></div>
+				<div className="sk-circle10 sk-circle"></div>
+				<div className="sk-circle11 sk-circle"></div>
+				<div className="sk-circle12 sk-circle"></div>
 			</div>
 		);
 	}

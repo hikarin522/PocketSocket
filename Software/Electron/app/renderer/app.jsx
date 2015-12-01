@@ -1,100 +1,109 @@
 'use strict';
 
-import Rx from 'rx';
-import {Observable} from 'rx';
+import {Observable, Disposable, SerialDisposable} from 'rx';
 import React from 'react';
-import {StateStreamMixin, FuncSubject} from 'rx-react';
+import {StateStreamMixin, PropsMixin, FuncSubject} from 'rx-react';
 import {Nav, NavItem, Navbar} from 'react-bootstrap';
+import Immutable from 'immutable';
+import defaultConfig from '../config.json';
 
 export default React.createClass({
-	mixins: [StateStreamMixin],
+	mixins: [StateStreamMixin, PropsMixin],
 
 	getInitialState() {
 		return {
-			activeKey: 1,
-			portName: ''
+			activeKey: this.props.location.pathname.split('/')[1],
+			chartConfig: Immutable.fromJS(defaultConfig),
+			portName: '',
+			serialPort: null,
+			recData$: null,
+			dispose: null
 		};
+	},
+
+	getStateStream() {
+		const activeKey$ = this.propsStream.map(x => ({activeKey: x.location.pathname.split('/')[1]}));
+
+		this.setChartConfig = FuncSubject.create();
+		const chartConfig$ = this.setChartConfig.map(chartConfig => ({chartConfig}));
+
+		this.portSelect = FuncSubject.create(e => e.target.value);
+		const portName$ = this.portSelect.map(portName => ({portName}));
+
+		const tryOpen$ = this.portSelect.where(Boolean)
+			.selectMany(name => this.props.serial.openSerialPort(name))
+			.publish().refCount();
+
+		const serialPort$ = tryOpen$.where(Boolean)
+			.map(serialPort => ({serialPort}))
+			.publish().refCount();
+
+		const close$ = Observable.merge(this.portSelect, tryOpen$).where(x => !x)
+			.map(() => {
+				this.dispose();
+				return {serialPort: null, portName: ''};
+			}).publish().refCount();
+
+		const read$ = serialPort$.map(({serialPort}) => {
+			//const read = serialPort.read.where(Boolean).publish().refCount();
+			const read = Observable.interval(1000).map(() => ({V:Math.random()*800,I:Math.random()*3,W:Math.random()*500})).publish().refCount();
+			const timeout = read.debounce(1500).map(() => ({V:0,I:0,W:0}));
+			const recData$ = Observable.merge(read, timeout).timestamp()
+				.scan(({V, I, W}, {value, timestamp}) => ({
+					V: V.push({x: timestamp, y: value.V}),
+					I: I.push({x: timestamp, y: value.I}),
+					W: W.push({x: timestamp, y: value.W}),
+				}), {V: Immutable.List(), I: Immutable.List(), W:Immutable.List()})
+				.publish();
+			return {recData$, dispose: recData$.connect()};
+		});
+
+		return Observable.merge(
+			chartConfig$, activeKey$, portName$, serialPort$, close$, read$
+		);
+	},
+
+	dispose() {
+		this.state.dispose && this.state.dispose.dispose();
+
+		this.state.serialPort && this.state.serialPort.dispose();
+	},
+
+	componentWillMount() {
+		window.addEventListener('unload', this.dispose);
 	},
 
 	componentWillUnmount() {
 		window.removeEventListener('unload', this.dispose);
 	},
 
-	dispose() {
-		this.serialDisposable.dispose();
-	},
-
-	getStateStream() {
-		this.handleSelect = FuncSubject.create((eventKey, href) => ({eventKey, href}));
-		const navSelector$ = this.handleSelect.do(i => location.href = i.href)
-			.map(i => ({activeKey: i.eventKey}));
-
-		this.portSelect = FuncSubject.behavior('', e => e.target.value);
-
-		const tryOpenPort$ = this.portSelect.where(Boolean)
-			.selectMany(name => Observable.startAsync(() => this.props.serial.openSerialPort(name)))
-			.publish().refCount();
-
-		tryOpenPort$.where(x => !x).subscribe(() => this.portSelect({target:{value:''}}));
-		const openPort$ = tryOpenPort$.where(Boolean).publish().refCount();
-
-		this.serialDisposable = new Rx.SerialDisposable();
-		window.addEventListener('unload', this.dispose);
-
-		this.portSelect.where(x => !x)
-			.subscribe(() => {
-				const dispose = this.serialDisposable.getDisposable();
-				dispose && dispose.dispose();
-			});
-
-		openPort$.map(x => Rx.Disposable.create(x.dispose))
-			.subscribe(x => this.serialDisposable.setDisposable(x));
-
-		const read$ = openPort$.selectMany(i => i.read)
-			.finally(() => {
-				const dispose = this.serialDisposable.getDisposable();
-				dispose && dispose.dispose();
-			});
-
-		this.recData = Observable.merge(read$, Observable.interval(2000).map(() => null))
-			.scan((acc, x) => ({prev: x, value: x || acc.prev ? x : {V:0, I:0, W:0}}), {prev: null, value: null})
-			.where(i => i && i.value && !isNaN(i.value.V) && !isNaN(i.value.I) && !isNaN(i.value.W))
-			.map(i => i.value)
-			.do(({V, I, W}) => console.log(`V: ${V}, I: ${I}, W: ${W}`))
-			.publish().refCount();
-
-		this.recData.subscribe(x => console.log(x));
-
-		return Observable.merge(
-			navSelector$,
-			this.portSelect.map(portName => ({portName}))
-		);
-	},
-
 	render() {
 		let props = {
 			...this.props,
+			...this.state,
 			portSelect: this.portSelect,
-			recData: this.recData
+			setChartConfig: this.setChartConfig,
 		};
+		delete props.dispose;
 		delete props.children;
+		delete props.activeKey;
 		const children = React.cloneElement(this.props.children, props);
 
 		return (
 			<div>
-				<Navbar fixedTop inverse>
+				<Navbar fixedTop>
 					<Navbar.Header>
 						<Navbar.Brand active>PocketSocket</Navbar.Brand>
 						<Navbar.Toggle />
 					</Navbar.Header>
 					<Navbar.Collapse>
-						<Nav activeKey={this.state.activeKey} onSelect={this.handleSelect}>
-							<NavItem eventKey={1} href="#" >Home</NavItem>
-							<NavItem eventKey={2} href="#/setting">Setting</NavItem>
-							<NavItem eventKey={3} href="#/chart" disabled={!Boolean(this.state.portName)}>Chart</NavItem>
+						<Nav activeKey={this.state.activeKey}>
+							<NavItem eventKey="" href="#" >Home</NavItem>
+							<NavItem eventKey="setting" href="#/setting">Setting</NavItem>
+							<NavItem eventKey="chart" href="#/chart">Chart</NavItem>
 						</Nav>
-						<Nav pullRight activeKey={this.state.activeKey} onSelect={this.handleSelect}>
-							<NavItem eventKey={4} href="#/about">About</NavItem>
+						<Nav pullRight activeKey={this.state.activeKey}>
+							<NavItem eventKey="about" href="#/about">About</NavItem>
 						</Nav>
 					</Navbar.Collapse>
 				</Navbar>

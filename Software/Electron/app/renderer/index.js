@@ -3,13 +3,8 @@
 import {Observable} from 'rx';
 import React from 'react';
 import {render} from 'react-dom';
-//import {ClassSet, LinkedStateMixin, PureRenderMixin} from 'react-addons';
-import {StateStreamMixin, PropsMixin, FuncSubject} from 'rx-react';
-import {Router, Route, IndexRoute, Redirect, IndexRedirect, Link, IndexLink, Lifecycle, RouteContext} from 'react-router';
+import {Router, Route, IndexRoute, Redirect, IndexRedirect} from 'react-router';
 import createHistory from 'history/lib/createHashHistory';
-import {Jumbotron, PageHeader, Tabs, Tab, Button, ButtonToolbar, Grid, Row, Col, Nav, NavItem, NavDropdown, Navbar, MenuItem, Label, Table} from 'react-bootstrap';
-import {Line} from 'react-chartjs';
-
 
 import path from 'path';
 import remote from 'remote';
@@ -20,6 +15,9 @@ import Setting from './setting.jsx';
 import Ports from './ports.jsx';
 import ChartSetting from './chartSetting.jsx';
 import Chart from './chart.jsx';
+import {About, Home} from './about.jsx';
+import RealTime from './realTimeChart.jsx';
+import Timer from './timerChart.jsx';
 
 async () => {
 	await Observable.fromEvent(document, 'DOMContentLoaded').first().toPromise();
@@ -37,10 +35,10 @@ async () => {
 					<Route path="chart" component={ChartSetting} />
 				</Route>
 				<Route path="chart" component={Chart}>
-					<IndexRedirect to="power" />
-					<Route path="power" component={About} />
-					<Route path="voltage" component={About} />
-					<Route path="current" component={About} />
+					<IndexRedirect to="realtime" />
+					<Route path="realtime" component={RealTime} />
+					<Route path="timer" component={Timer} />
+					<Route path="setting" component={ChartSetting} />
 				</Route>
 				<Route path="about" component={About} />
 			</Route>
@@ -56,22 +54,3 @@ function wrapClass(Component, extProps) {
 		}
 	});
 }
-
-const About = React.createClass({
-	render() {
-		return <div><h1>About</h1><Button bsStyle="primary">Primary</Button></div>;
-	}
-});
-
-const Home = React.createClass({
-	render() {
-		return (
-			<Jumbotron>
-				<h1>PocketSocket</h1>
-			</Jumbotron>
-		);
-	}
-});
-
-
-

@@ -22,30 +22,33 @@ class EdgeSerialPort {
 	getPortInfo() {
 		return Rx.Observable.fromNodeCallback(this.dll.getPortInfo)(null);
 	}
-	async openSerialPort(name) {
-		const port = await Rx.Observable.fromNodeCallback(this.dll.openSerialPort)(name).toPromise();
-		if (port == null)
-			return null;
-		return {
-			read: Rx.Observable.create(async ob => {
-				const dispose = await Rx.Observable.fromCallback(port.subscribe)({
-					onNext: (data, cb) => {
-						ob.onNext(data);
-						cb();
-					},
-					onError: (err, cb) => {
-						ob.onError(err);
-						cb();
-					},
-					onCompleted: (_, cb) => {
-						ob.onCompleted();
-						cb();
-					}
-				}).toPromise();
-				return async () => await Rx.Observable.fromCallback(dispose)(null).toPromise();
-			}),
-			write: async str => await Rx.Observable.fromCallback(port.write)(str).toPromise(),
-			dispose: async () => await Rx.Observable.fromCallback(port.dispose)(null).toPromise()
-		};
+
+	openSerialPort(name) {
+		return Rx.Observable.fromNodeCallback(this.dll.openSerialPort)(name)
+			.map(port => {
+				if (!port)
+					return null;
+				return {
+					read: Rx.Observable.create(async ob => {
+						const dispose = await Rx.Observable.fromCallback(port.subscribe)({
+							onNext: (data, cb) => {
+								ob.onNext(data);
+								cb();
+							},
+							onError: (err, cb) => {
+								ob.onError(err);
+								cb();
+							},
+							onCompleted: (_, cb) => {
+								ob.onCompleted();
+								cb();
+							}
+						}).toPromise();
+						return async () => await Rx.Observable.fromCallback(dispose)(null).toPromise();
+					}),
+					write: async str => await Rx.Observable.fromCallback(port.write)(str).toPromise(),
+					dispose: async () => await Rx.Observable.fromCallback(port.dispose)(null).toPromise()
+				};
+			});
 	}
 }
