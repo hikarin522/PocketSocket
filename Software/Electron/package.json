@@ -15,5 +15,7 @@
     "electron-prebuilt": "^0.35.1",
     "gulp": "^3.9.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "electron-prebuilt": "^0.35.2"
+  }
 }
