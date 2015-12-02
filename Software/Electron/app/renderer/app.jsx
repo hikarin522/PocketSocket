@@ -45,12 +45,13 @@ export default React.createClass({
 			}).publish().refCount();
 
 		const read$ = serialPort$.map(({serialPort}) => {
-			const read = serialPort.read.where(Boolean).startWith({V:0,I:0,W:0}).publish().refCount();
-			//const read = Observable.interval(2000).map(() => ({V:Math.random()*800,I:Math.random()*3,W:Math.random()*500})).publish().refCount();
-			const timeout = read.debounce(1500).selectMany(() => Observable.interval(1000)
-					.takeUntil(read).map(() => ({V:0,I:0,W:0}))
+			const read = serialPort.read.where(Boolean).startWith({V:0,I:0,W:0}).timestamp().publish().refCount();
+			//const read = Observable.interval(2000).map(() => ({V:Math.random()*800,I:Math.random()*3,W:Math.random()*500})).timestamp().publish().refCount();
+			const timeout = read.selectMany(() => Observable.interval(1000)
+					.map(() => ({V:0,I:0,W:0})).timestamp()
+					.delay(500).takeUntil(read)
 				);
-			const recData$ = Observable.merge(read, timeout).timestamp()
+			const recData$ = Observable.merge(read, timeout)
 				.scan(({V, I, W}, {value, timestamp}) => ({
 					V: V.push({x: timestamp, y: value.V}),
 					I: I.push({x: timestamp, y: value.I}),

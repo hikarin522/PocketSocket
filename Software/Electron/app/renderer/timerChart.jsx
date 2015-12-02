@@ -14,7 +14,7 @@ export default React.createClass({
 		return {
 			isCounting: false,
 			period: 30,
-			count: 30,
+			count: 0,
 			maxPower: 0,
 			avePower: 0
 		};
@@ -29,13 +29,14 @@ export default React.createClass({
 			.map(() => ({isCounting: false}));
 
 		this.period = FuncSubject.create(x => x.target.value);
-		const period$ = this.period.map(period => ({period}));
+		const period$ = this.period.where(x => x > 0 && x <= 3600).map(period => ({period}));
 
 		return Observable.merge(start$, end$, counter$, period$);
 	},
 
 	render() {
 		const format = new Intl.NumberFormat('ja-JP', {maximumFractionDigits: 2, minimumFractionDigits: 2});
+		const count = new Intl.NumberFormat('ja-JP', {maximumFractionDigits: 1, minimumFractionDigits: 1}).format(this.state.count / 10);
 		const isCount = this.state.isCounting;
 		const period = this.state.period;
 		return (
@@ -45,10 +46,10 @@ export default React.createClass({
 				</h3>
 				<Row className style={{textAlign: 'center'}}>
 					<Col xs={5} xsOffset={3}><h3>
-						{isCount ? this.state.count : period} Seconds
+						{count} Seconds
 						<Button onClick={isCount ? null : this.start} style={{position:'relative', left:'50px'}}>{isCount ? "Stop" : "Start"}</Button>
 					</h3></Col>
-					<Col xs={4}><h3><Input type="number" onChange={this.period} defaultValue={period} label="period" labelClassName="col-xs-6" wrapperClassName="col-xs-6" /></h3></Col>
+					<Col xs={4}><h3><Input type="number" onChange={this.period} defaultValue={period} min={1} max={3600} required label="period" labelClassName="col-xs-6" wrapperClassName="col-xs-6" /></h3></Col>
 				</Row>
 				<Chart config={this.props.chartConfig} recData$={this.props.recData$} start={this.start} period={period} counter={this.counter} />
 			</div>
@@ -64,49 +65,37 @@ const Chart = React.createClass({
 			const voltage = chart.get('voltage');
 			const current = chart.get('current');
 			const rec$ = this.props.recData$;
-			const period = this.props.period;
+			const counter = this.props.counter;
 
 		this.dispose = this.props.start.subscribe(() => {
+			const period = this.props.period;
 			let first = true;
 
-			const timer$ = rec$.first()
-				.selectMany(() => Observable.interval(1000))
-				.map(x => period - x - 1)
-				.takeWhile(i => i >= 0).publish().refCount();
+			rec$.first().selectMany(() => Observable.interval(100).startWith(-1))
+				.map(x => ({count: period * 10 - x - 1}))
+				.takeWhile(({count}) => count >= 0).subscribe(counter);
 
-			timer$.subscribe(count => this.props.counter({count}));
-
-			const powerCalc = FuncSubject.create();
-
-			rec$.takeUntil(timer$.where(i => i === 0)).subscribe(({W, V, I}) => {
-				const w = W.last(), v = V.last(), i = I.last();
-				if (first) {
-					first = false;
-					chart.xAxis[0].update({min: w.x - 1000, max: w.x + period * 1000 + 1000});
-					power.setData([w], false);
-					voltage.setData([v], false);
-					current.setData([i]);
-					firstP = w;
-				} else {
-					power.addPoint(w, false);
-					voltage.addPoint(v, false);
-					current.addPoint(i);
-				}
-				powerCalc(w);
-			});
-
-			powerCalc.scan(
-					(acc, value) => {
-						if (!acc.prev)
-							return {prev: value, max: value.y, ave: value.y, x: value.x, sum: value.y};
-						const sum = acc.sum + (value.x - acc.prev.x) * (value.y + acc.prev.y) / 2;
-						const ave = sum / (value.x - acc.x);
-						const max = acc.max < value.y ? value.y : acc.max;
-						return {prev: value, max, x: acc.x, ave, sum};
-					},
-					{prev: null, max: 0, ave: 0, x: 0, sum: 0}
-				).subscribe(({max, ave}) => {
-					this.props.counter({maxPower: max, avePower: ave});
+			rec$.scan(({prev, max, sum, x0}, {V, I, W}) => {
+					const w = W.last(), v = V.last(), i = I.last();
+					if (!prev) {
+						chart.xAxis[0].update({min: w.x - 1000, max: w.x + period * 1000 + 1000});
+						power.setData([w], false);
+						voltage.setData([v], false);
+						current.setData([i]);
+						return {prev: w, max: w.y, sum: w.y, ave: w.y, x0: w.x};
+					} else {
+						power.addPoint(w, false);
+						voltage.addPoint(v, false);
+						current.addPoint(i);
+						max = max < w.y ? w.y : max;
+						sum += (w.x - prev.x) * (w.y + prev.y) / 2;
+						const ave = sum / (w.x - x0);
+						return {prev: w, max, sum, ave, x0};
+					}
+				}, {prev: null}
+				).takeWhile(({prev, x0}) => (x0 + (period * 1000) >= prev.x))
+				.subscribe(({max, ave}) => {
+					counter({maxPower: max, avePower: ave});
 				});
 		});
 
