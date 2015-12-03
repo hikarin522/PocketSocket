@@ -75,14 +75,15 @@ const Chart = React.createClass({
 				.map(x => ({count: period * 10 - x - 1}))
 				.takeWhile(({count}) => count >= 0).subscribe(counter);
 
-			rec$.scan(({prev, max, sum, x0}, {V, I, W}) => {
+			rec$.scan(({prev, max, sum, x0, xn}, {V, I, W}) => {
 					const w = W.last(), v = V.last(), i = I.last();
 					if (!prev) {
-						chart.xAxis[0].update({min: w.x - 1000, max: w.x + period * 1000 + 1000});
+						xn = w.x + period * 1000;
+						chart.xAxis[0].update({min: w.x - 1000, max: xn + 1000});
 						power.setData([w], false);
 						voltage.setData([v], false);
 						current.setData([i]);
-						return {prev: w, max: w.y, sum: w.y, ave: w.y, x0: w.x};
+						return {prev: w, max: w.y, sum: w.y, ave: w.y, x0: w.x, xn};
 					} else {
 						power.addPoint(w, false);
 						voltage.addPoint(v, false);
@@ -90,15 +91,13 @@ const Chart = React.createClass({
 						max = max < w.y ? w.y : max;
 						sum += (w.x - prev.x) * (w.y + prev.y) / 2;
 						const ave = sum / (w.x - x0);
-						return {prev: w, max, sum, ave, x0};
+						return {prev: w, max, sum, ave, x0, xn};
 					}
-				}, {prev: null}
-				).takeWhile(({prev, x0}) => (x0 + (period * 1000) >= prev.x))
+				}, {}).takeWhile(({prev, xn}) => prev.x <= xn)
 				.subscribe(({max, ave}) => {
 					counter({maxPower: max, avePower: ave});
 				});
 		});
-
 	},
 
 	shouldComponentUpdate() {
