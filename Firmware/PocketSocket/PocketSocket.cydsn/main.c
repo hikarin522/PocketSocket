@@ -14,8 +14,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "boost/preprocessor.hpp"
-#include "SysTick.h"
-#include "I2C_LCD.h"
 
 static uint8 USB_Main(void);
 static int USB_Printf(const char *__restrict, ...);
@@ -44,8 +42,7 @@ int main()
 	ADC_B_StartConvert();
 	
 	CyDelay(100);
-	
-	SysTick_Start(SysTick_ILO);
+	SysTick_Start();
 	I2C_LCD_Start();
 	I2C_LCD_PutString("Start\n");
 	

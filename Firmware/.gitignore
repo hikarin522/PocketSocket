@@ -4,6 +4,7 @@ codegentemp/
 Generated_Source/
 DP8051/
 CortexM3/
+Export/
 
 *.cywrk.*
 *.cyprj.*
