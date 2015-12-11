@@ -16,7 +16,7 @@
 #include "boost/preprocessor.hpp"
 
 static uint8 USB_Main(void);
-static int USB_Printf(const char *__restrict, ...);
+static int USB_Printf(const char *restrict, ...);
 
 int main()
 {
@@ -27,10 +27,14 @@ int main()
     VDAC_MIN_Start();
     Comp_MAX_Start();
     Comp_MIN_Start();
-    
+	
+    LPF_V_Start();
+	LPF_I_Start();
 	ADC_V_Start();
 	ADC_I_Start();
-	ADC_B_Start();
+	
+	ADC_Bat_Start();
+
 	I2C_Start();
 	USBUART_Start(0, USBUART_5V_OPERATION);
 	
@@ -39,7 +43,7 @@ int main()
 	
 	ADC_V_StartConvert();
 	ADC_I_StartConvert();
-	ADC_B_StartConvert();
+	ADC_Bat_StartConvert();
 	
 	CyDelay(100);
 	SysTick_Start();
@@ -49,11 +53,34 @@ int main()
 	EN_Write(1);
 	
 	SysTick_t timer = SysTick_GetTime();
+	SysTick_t tpwm = timer;
+	uint8 pwmState = -1;
+	uint8 pwmComp = -1;
 	uint16 v = 0, i = 0;
 	uint8 led = 0;
 	for (;;) {
 		USB_Main();
 		I2C_LCD_Main();
+		
+		if (SysTick_GetInterval(tpwm) > SysTick_ms(250)) {
+			if (++pwmComp > 25) {
+				pwmComp = 0;
+				if (++pwmState >= 24)
+					pwmState = 0;
+			}
+			
+#define PWM_STATE(x, i, t) \
+case 2*i:\
+	PWM(x, i, WriteCompare1)(pwmComp);\
+	break;\
+case 2*i+1:\
+	PWM(x, i, WriteCompare2)(pwmComp);\
+	break;
+			switch (pwmState) {
+				BOOST_PP_REPEAT(12, PWM_STATE, null)
+			}
+			tpwm = SysTick_GetTime();
+		}
 		
 		if (ADC_V_IsEndConversion(ADC_V_RETURN_STATUS)) {
 			v = ADC_V_GetResult16();

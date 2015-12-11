@@ -49,12 +49,12 @@ static `$INSTANCE_NAME`_Font font[8];
 
 static uint8 buf[256];
 
-__STATIC_INLINE uint8 GetLine(const uint8 it) {
+static inline uint8 GetLine(const uint8 it) {
 	const uint8 line = line_base + it;
 	return line < `$DDRAM_LINE` ? line : line - `$DDRAM_LINE`;
 }
 
-__INLINE cystatus `$INSTANCE_NAME`_SetPosition(const uint8 line, const uint8 offset) {
+inline cystatus `$INSTANCE_NAME`_SetPosition(const uint8 line, const uint8 offset) {
 	if (line >= `$DDRAM_LINE` || offset >= `$DDRAM_SIZE`) {
 		return CYRET_BAD_PARAM;
 	}
@@ -63,7 +63,7 @@ __INLINE cystatus `$INSTANCE_NAME`_SetPosition(const uint8 line, const uint8 off
 	return CYRET_SUCCESS;
 }
 
-__INLINE cystatus `$INSTANCE_NAME`_ScrollLine(const int8 n) {
+inline cystatus `$INSTANCE_NAME`_ScrollLine(const int8 n) {
 	if (n >= `$DDRAM_LINE` || n <= -`$DDRAM_LINE`) {
 		return CYRET_BAD_PARAM;
 	}
@@ -73,7 +73,7 @@ __INLINE cystatus `$INSTANCE_NAME`_ScrollLine(const int8 n) {
 	return CYRET_SUCCESS;
 }
 
-__INLINE cystatus `$INSTANCE_NAME`_PutString(const char *str) {
+inline cystatus `$INSTANCE_NAME`_PutString(const char *str) {
 	if (str == NULL || *str == '\0') {
 		return CYRET_BAD_PARAM;
 	}
@@ -85,7 +85,7 @@ __INLINE cystatus `$INSTANCE_NAME`_PutString(const char *str) {
 	return *str == '\0' ? CYRET_SUCCESS : CYRET_MEMORY;
 }
 
-__INLINE cystatus `$INSTANCE_NAME`_PutChar(const char ch) {
+inline cystatus `$INSTANCE_NAME`_PutChar(const char ch) {
 	if (str_it >= `$DDRAM_SIZE`) {
 		return CYRET_MEMORY;
 	}
@@ -95,7 +95,7 @@ __INLINE cystatus `$INSTANCE_NAME`_PutChar(const char ch) {
 	return CYRET_SUCCESS;
 }
 
-__INLINE cystatus `$INSTANCE_NAME`_ClearDisplay(void) {
+inline cystatus `$INSTANCE_NAME`_ClearDisplay(void) {
 	uint8 i = sizeof(str_buf) - 1;
 	do {
 		((uint8 *)str_buf)[i] = ' ';
@@ -105,7 +105,7 @@ __INLINE cystatus `$INSTANCE_NAME`_ClearDisplay(void) {
 	return CYRET_SUCCESS;
 }
 
-__INLINE cystatus `$INSTANCE_NAME`_ReturnHome(void) {
+inline cystatus `$INSTANCE_NAME`_ReturnHome(void) {
 	`$INSTANCE_NAME`_SetPosition(0, 0);
 	if (sts.displayReset != 0x01) {
 		sts.displayReset = 0x02;
@@ -113,50 +113,50 @@ __INLINE cystatus `$INSTANCE_NAME`_ReturnHome(void) {
 	return CYRET_SUCCESS;
 }
 
-__INLINE void `$INSTANCE_NAME`_EntryModeSet(const enum `$INSTANCE_NAME`_ENTRYMODE cmd) {
+inline void `$INSTANCE_NAME`_EntryModeSet(const enum `$INSTANCE_NAME`_ENTRYMODE cmd) {
 	sts.entryModeSet = cmd;
 }
 
-__INLINE void `$INSTANCE_NAME`_DisplaySW(const enum `$INSTANCE_NAME`_DISPLAY cmd) {
+inline void `$INSTANCE_NAME`_DisplaySW(const enum `$INSTANCE_NAME`_DISPLAY cmd) {
 	sts.displayOnOff = cmd;
 }
 
-__INLINE void `$INSTANCE_NAME`_FunctionSet(const enum `$INSTANCE_NAME`_FUNCTION cmd) {
+inline void `$INSTANCE_NAME`_FunctionSet(const enum `$INSTANCE_NAME`_FUNCTION cmd) {
 	sts.functionSet = cmd;
 }
 
-__INLINE void `$INSTANCE_NAME`_FrequencySet(const enum `$INSTANCE_NAME`_FREQUENCY f) {
+inline void `$INSTANCE_NAME`_FrequencySet(const enum `$INSTANCE_NAME`_FREQUENCY f) {
 	sts.oscFrequency = (sts.oscFrequency & 0x08) | f;
 }
 
-__INLINE void `$INSTANCE_NAME`_BiasSet(const enum `$INSTANCE_NAME`_BIAS cmd) {
+inline void `$INSTANCE_NAME`_BiasSet(const enum `$INSTANCE_NAME`_BIAS cmd) {
 	sts.oscFrequency = (sts.oscFrequency & 0x07) | cmd;
 }
 
-__INLINE void `$INSTANCE_NAME`_BoosterSW(const enum `$INSTANCE_NAME`_BOOSTER cmd) {
+inline void `$INSTANCE_NAME`_BoosterSW(const enum `$INSTANCE_NAME`_BOOSTER cmd) {
 	sts.powerIconContrast = (sts.powerIconContrast & 0x0B) | cmd;
 }
 
-__INLINE void `$INSTANCE_NAME`_IconSW(const enum `$INSTANCE_NAME`_ICON cmd) {
+inline void `$INSTANCE_NAME`_IconSW(const enum `$INSTANCE_NAME`_ICON cmd) {
 	sts.powerIconContrast = (sts.powerIconContrast & 0x07) | cmd;
 }
 
-__INLINE void `$INSTANCE_NAME`_ContrastSet(uint8 c) {
+inline void `$INSTANCE_NAME`_ContrastSet(uint8 c) {
 	if (c > 0x3F)
 		c = 0x3F;
 	sts.powerIconContrast = 0x50 | (sts.powerIconContrast & 0x0C) | (c >> 4);
 	sts.contrastSet = 0x70 | c;
 }
 
-__INLINE void `$INSTANCE_NAME`_FollowerSW(const enum `$INSTANCE_NAME`_FOLLOWER cmd) {
+inline void `$INSTANCE_NAME`_FollowerSW(const enum `$INSTANCE_NAME`_FOLLOWER cmd) {
 	sts.follower = (sts.follower & 0x07) | cmd;
 }
 
-__INLINE void `$INSTANCE_NAME`_GainSet(const enum `$INSTANCE_NAME`_GAIN cmd) {
+inline void `$INSTANCE_NAME`_GainSet(const enum `$INSTANCE_NAME`_GAIN cmd) {
 	sts.follower = (sts.follower & 0x08) | cmd;
 }
 
-__INLINE cystatus `$INSTANCE_NAME`_FontSet(const `$INSTANCE_NAME`_Font f, const uint8 ch) {
+inline cystatus `$INSTANCE_NAME`_FontSet(const `$INSTANCE_NAME`_Font f, const uint8 ch) {
 	if (ch >= (sizeof(font) / sizeof(`$INSTANCE_NAME`_Font))) {
 		return CYRET_BAD_PARAM;
 	}
@@ -168,7 +168,7 @@ __INLINE cystatus `$INSTANCE_NAME`_FontSet(const `$INSTANCE_NAME`_Font f, const 
 	return CYRET_SUCCESS;
 }
 
-__STATIC_INLINE uint8 CMD_Push(const uint8 it_base) {
+static inline uint8 CMD_Push(const uint8 it_base) {
 #define PUSH(member) \
 	if (sts.member != prests.member) {\
 		buf[it++] = CO;\
@@ -196,7 +196,7 @@ __STATIC_INLINE uint8 CMD_Push(const uint8 it_base) {
 #undef PUSH
 }
 
-__STATIC_INLINE uint8 Font_Push(const uint8 it_base) {
+static inline uint8 Font_Push(const uint8 it_base) {
 	uint8 it = it_base;
 	if (font_sts) {
 		uint8 i, addr = 0xFF, sts = 1;
@@ -220,7 +220,7 @@ __STATIC_INLINE uint8 Font_Push(const uint8 it_base) {
 	return it;
 }
 
-__STATIC_INLINE uint8 Str_Push(const uint8 it_base) {
+static inline uint8 Str_Push(const uint8 it_base) {
 	uint8 it = it_base;
 	if (sts.displayReset) {
 		buf[it++] = 0;

@@ -29,13 +29,13 @@
 
 typedef uint32_t `$INSTANCE_NAME`_t;
 
-__STATIC_INLINE void `$INSTANCE_NAME`_Start() {
+static inline void `$INSTANCE_NAME`_Start() {
 	SysTick->LOAD = SysTick_LOAD_RELOAD_Msk;
 	SysTick->VAL  = 0;
 	SysTick->CTRL = `$INSTANCE_NAME`_CLKSOURCE_Msk | SysTick_CTRL_ENABLE_Msk;
 }
 
-__STATIC_INLINE cystatus `$INSTANCE_NAME`_StartEx(const `$INSTANCE_NAME`_t ticks, const cyisraddress address) {
+static inline cystatus `$INSTANCE_NAME`_StartEx(const `$INSTANCE_NAME`_t ticks, const cyisraddress address) {
 	if ((ticks - 1) > SysTick_LOAD_RELOAD_Msk)
 		return CYRET_BAD_PARAM;
 	CyIntSetSysVector(SysTick_IRQn + 16, address);
@@ -46,27 +46,27 @@ __STATIC_INLINE cystatus `$INSTANCE_NAME`_StartEx(const `$INSTANCE_NAME`_t ticks
 	return CYRET_SUCCESS;
 }
 
-__STATIC_INLINE `$INSTANCE_NAME`_t `$INSTANCE_NAME`_ns(const uint32_t val) {
+static inline `$INSTANCE_NAME`_t `$INSTANCE_NAME`_ns(const uint32_t val) {
 	return val * (`$FREQUENCY` / (1000 * 1000 * 1000));
 }
 
-__STATIC_INLINE `$INSTANCE_NAME`_t `$INSTANCE_NAME`_us(const uint32_t val) {
+static inline `$INSTANCE_NAME`_t `$INSTANCE_NAME`_us(const uint32_t val) {
 	return val * (`$FREQUENCY` / (1000 * 1000));
 }
 
-__STATIC_INLINE `$INSTANCE_NAME`_t `$INSTANCE_NAME`_ms(const uint32_t val) {
+static inline `$INSTANCE_NAME`_t `$INSTANCE_NAME`_ms(const uint32_t val) {
 	return val * (`$FREQUENCY` / 1000);
 }
 
-__STATIC_INLINE `$INSTANCE_NAME`_t `$INSTANCE_NAME`_s(const uint32_t val) {
+static inline `$INSTANCE_NAME`_t `$INSTANCE_NAME`_s(const uint32_t val) {
 	return val * `$FREQUENCY`;
 }
 
-__STATIC_INLINE `$INSTANCE_NAME`_t `$INSTANCE_NAME`_GetTime() {
+static inline `$INSTANCE_NAME`_t `$INSTANCE_NAME`_GetTime() {
 	return SysTick->VAL;
 }
 
-__STATIC_INLINE `$INSTANCE_NAME`_t `$INSTANCE_NAME`_GetInterval(const `$INSTANCE_NAME`_t time) {
+static inline `$INSTANCE_NAME`_t `$INSTANCE_NAME`_GetInterval(const `$INSTANCE_NAME`_t time) {
 	return (time - SysTick->VAL) & SysTick_VAL_CURRENT_Msk;
 }
 	

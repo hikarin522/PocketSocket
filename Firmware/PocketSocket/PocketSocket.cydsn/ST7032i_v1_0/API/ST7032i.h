@@ -107,25 +107,25 @@ cystatus `$INSTANCE_NAME`_ClearDisplay(void);
 
 cystatus `$INSTANCE_NAME`_ReturnHome(void);
 
-void `$INSTANCE_NAME`_EntryModeSet(enum `$INSTANCE_NAME`_ENTRYMODE);
+void `$INSTANCE_NAME`_EntryModeSet(const enum `$INSTANCE_NAME`_ENTRYMODE);
 
-void `$INSTANCE_NAME`_DisplaySW(enum `$INSTANCE_NAME`_DISPLAY);
+void `$INSTANCE_NAME`_DisplaySW(const enum `$INSTANCE_NAME`_DISPLAY);
 
-void `$INSTANCE_NAME`_FunctionSet(enum `$INSTANCE_NAME`_FUNCTION);
+void `$INSTANCE_NAME`_FunctionSet(const enum `$INSTANCE_NAME`_FUNCTION);
 
-void `$INSTANCE_NAME`_FrequencySet(enum `$INSTANCE_NAME`_FREQUENCY);
+void `$INSTANCE_NAME`_FrequencySet(const enum `$INSTANCE_NAME`_FREQUENCY);
 
-void `$INSTANCE_NAME`_BiasSet(enum `$INSTANCE_NAME`_BIAS);
+void `$INSTANCE_NAME`_BiasSet(const enum `$INSTANCE_NAME`_BIAS);
 
-void `$INSTANCE_NAME`_BoosterSW(enum `$INSTANCE_NAME`_BOOSTER);
+void `$INSTANCE_NAME`_BoosterSW(const enum `$INSTANCE_NAME`_BOOSTER);
 
-void `$INSTANCE_NAME`_IconSW(enum `$INSTANCE_NAME`_ICON);
+void `$INSTANCE_NAME`_IconSW(const enum `$INSTANCE_NAME`_ICON);
 
 void `$INSTANCE_NAME`_ContrastSet(uint8);
 
-void `$INSTANCE_NAME`_FollowerSW(enum `$INSTANCE_NAME`_FOLLOWER);
+void `$INSTANCE_NAME`_FollowerSW(const enum `$INSTANCE_NAME`_FOLLOWER);
 
-void `$INSTANCE_NAME`_GainSet(enum `$INSTANCE_NAME`_GAIN);
+void `$INSTANCE_NAME`_GainSet(const enum `$INSTANCE_NAME`_GAIN);
 
 cystatus `$INSTANCE_NAME`_FontSet(const `$INSTANCE_NAME`_Font, uint8);
 
