@@ -14,54 +14,36 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "boost/preprocessor.hpp"
+#include "dma.h"
+#include "usb.h"
 
-static uint8 USB_Main(void);
-static int USB_Printf(const char *restrict, ...);
+#define PWM(x, i, name) BOOST_PP_CAT(PWM_, BOOST_PP_CAT(i, BOOST_PP_CAT(_, name)))
+static inline void init(void);
 
-int main()
-{
+CY_ISR(isr_v) {
+}
+
+CY_ISR(isr_i) {
+}
+
+CY_ISR(isr_bat) {
+}
+
+int main() {
 	CyGlobalIntEnable;
 	LED_Write(1);
-    
-    VDAC_MAX_Start();
-    VDAC_MIN_Start();
-    Comp_MAX_Start();
-    Comp_MIN_Start();
+    init();
 	
-    LPF_V_Start();
-	LPF_I_Start();
-	ADC_V_Start();
-	ADC_I_Start();
-	
-	ADC_Bat_Start();
-
-	I2C_Start();
-	USBUART_Start(0, USBUART_5V_OPERATION);
-	
-#define PWM(x, i, name) BOOST_PP_CAT(PWM_, BOOST_PP_CAT(i, BOOST_PP_CAT(_, name)))
-	BOOST_PP_REPEAT(12, PWM, Start();)
-	
-	ADC_V_StartConvert();
-	ADC_I_StartConvert();
-	ADC_Bat_StartConvert();
-	
-	CyDelay(100);
-	SysTick_Start();
-	I2C_LCD_Start();
-	I2C_LCD_PutString("Start\n");
-	
-	EN_Write(1);
+	I2C_LCD_PutString("Start");
 	
 	SysTick_t timer = SysTick_GetTime();
 	SysTick_t tpwm = timer;
 	uint8 pwmState = -1;
 	uint8 pwmComp = -1;
-	uint16 v = 0, i = 0;
 	uint8 led = 0;
 	for (;;) {
 		USB_Main();
 		I2C_LCD_Main();
-		
 		if (SysTick_GetInterval(tpwm) > SysTick_ms(250)) {
 			if (++pwmComp > 25) {
 				pwmComp = 0;
@@ -82,16 +64,10 @@ case 2*i+1:\
 			tpwm = SysTick_GetTime();
 		}
 		
-		if (ADC_V_IsEndConversion(ADC_V_RETURN_STATUS)) {
-			v = ADC_V_GetResult16();
-		}
-		if (ADC_I_IsEndConversion(ADC_I_RETURN_STATUS)) {
-			i = ADC_I_GetResult16();
-		}
 		if (SysTick_GetInterval(timer) > SysTick_ms(500)) {
 			const uint8 usb_active = USBUART_CheckActivity();
-			const int16 mv = ADC_V_CountsTo_mVolts(v);
-			const int16 ma = ADC_I_CountsTo_mVolts(i);
+			const int16 mv = ADC_V_CountsTo_mVolts(buf_v[sizeof(buf_v) / sizeof(buf_v[0]) - 1]);
+			const int16 ma = ADC_I_CountsTo_mVolts(buf_i[sizeof(buf_i) / sizeof(buf_i[0]) - 1]);
 			char buf1[17], buf2[17];
 			USB_Printf("%d[mV], %d[mA]\n", mv, ma);
 			I2C_LCD_ClearDisplay();
@@ -107,45 +83,46 @@ case 2*i+1:\
 	}
 }
 
-static uint8 usb_it = 0;
-static char8 usb_buf[256];
-static int USB_Printf(const char *__restrict format, ...) {
-	va_list arg;
-	va_start(arg, format);
-	const int result = vsnprintf(usb_buf + usb_it, sizeof(usb_buf) - 1 - usb_it, format, arg);
-	va_end(arg);
-	if (result > 0) {
-		usb_it += result;
-	}
-	return result;
+static inline void init() {
+	VDAC_MAX_Start();
+    VDAC_MIN_Start();
+    Comp_MAX_Start();
+    Comp_MIN_Start();
+	
+    LPF_V_Start();
+	LPF_I_Start();
+	ADC_V_Start();
+	ADC_I_Start();
+	ADC_Bat_Start();
+	
+	BOOST_PP_REPEAT(12, PWM, Start();)
+	
+	Filter_Start();
+	Filter_SetCoherencyEx(Filter_STAGEA_COHER, Filter_KEY_MID);
+	Filter_SetCoherencyEx(Filter_STAGEB_COHER, Filter_KEY_MID);
+	Filter_SetCoherencyEx(Filter_HOLDA_COHER, Filter_KEY_MID);
+	Filter_SetCoherencyEx(Filter_HOLDB_COHER, Filter_KEY_MID);
+	Filter_SetDalign(Filter_STAGEA_DALIGN, Filter_ENABLED);
+	Filter_SetDalign(Filter_STAGEB_DALIGN, Filter_ENABLED);
+	Filter_SetDalign(Filter_HOLDA_DALIGN, Filter_ENABLED);
+	Filter_SetDalign(Filter_HOLDB_DALIGN, Filter_ENABLED);
+	
+	ADC_Bat_SetCoherency(ADC_Bat_COHER_HIGH);
+	DMA_init();
+	
+	I2C_Start();
+	USBUART_Start(0, USBUART_5V_OPERATION);
+	
+	CyDelay(50);
+	I2C_LCD_Start();
+	SysTick_Start();
+	
+	ADC_V_StartConvert();
+	ADC_I_StartConvert();
+	ADC_Bat_StartConvert();
+	
+	EN_Write(1);
 }
 
-static uint8 USB_Main(void) {
-	static uint8 state = 0;
-	
-	switch (state) {
-		case 0: {
-			if (USBUART_GetConfiguration() == 0) {
-				return state;
-			}
-			USBUART_CDC_Init();
-			++state;
-			return 1;
-		}
-		case 1: {
-			if (USBUART_IsConfigurationChanged()) {
-				return state = 0;
-			}
-			if (!USBUART_CDCIsReady() || usb_it == 0) {
-				return state;
-			}
-			usb_it = 0;
-			USBUART_PutString(usb_buf);
-			return state;
-		}
-	}
-	
-	return state = 0;
-}
 
 /* [] END OF FILE */
