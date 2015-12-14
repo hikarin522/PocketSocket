@@ -35,6 +35,7 @@ int main() {
     init();
 	
 	I2C_LCD_PutString("Start");
+	USB_Printf("Start\n");
 	
 	SysTick_t timer = SysTick_GetTime();
 	SysTick_t tpwm = timer;
@@ -66,8 +67,8 @@ case 2*i+1:\
 		
 		if (SysTick_GetInterval(timer) > SysTick_ms(500)) {
 			const uint8 usb_active = USBUART_CheckActivity();
-			const int16 mv = ADC_V_CountsTo_mVolts(buf_v[sizeof(buf_v) / sizeof(buf_v[0]) - 1]);
-			const int16 ma = ADC_I_CountsTo_mVolts(buf_i[sizeof(buf_i) / sizeof(buf_i[0]) - 1]);
+			const int16 mv = ADC_V_CountsTo_mVolts(buf_v[1]);
+			const int16 ma = ADC_I_CountsTo_mVolts(buf_i[1]);
 			char buf1[17], buf2[17];
 			USB_Printf("%d[mV], %d[mA]\n", mv, ma);
 			I2C_LCD_ClearDisplay();
@@ -109,6 +110,10 @@ static inline void init() {
 	
 	ADC_Bat_SetCoherency(ADC_Bat_COHER_HIGH);
 	DMA_init();
+
+	isr_V_StartEx(isr_v);
+	isr_I_StartEx(isr_i);
+	isr_Bat_StartEx(isr_bat);
 	
 	I2C_Start();
 	USBUART_Start(0, USBUART_5V_OPERATION);
