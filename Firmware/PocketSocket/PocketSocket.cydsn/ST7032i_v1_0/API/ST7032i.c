@@ -18,14 +18,15 @@
 #endif // I2C_M_SCB_MODE
 
 #define WriteBuf(buf, it) (`$I2C_MASTER_NAME`_MasterWriteBuf(`$I2C_ADDRESS`, (buf), (it), `$I2C_MASTER_NAME`_MODE_COMPLETE_XFER))
-#define Status() (`$I2C_MASTER_NAME`_MasterStatus())
+#define Status (`$I2C_MASTER_NAME`_MasterStatus)
+#define ClearStatus (`$I2C_MASTER_NAME`_MasterClearStatus)
 #define StatusMask (`$I2C_MASTER_NAME`_MSTAT_ERR_XFER | `$I2C_MASTER_NAME`_MSTAT_XFER_INP | `$I2C_MASTER_NAME`_MSTAT_XFER_HALT)
 
 #define RS 0x40
 #define CO 0x80
 #define IS 0x01
 
-#define WAIT_TICK (`$SYSTICK_NAME`_ms(2))
+#define WAIT_TICK (`$SYSTICK_NAME`_ms(10))
 
 static uint8 str_sts = 0;
 static uint8 str_buf[`$DDRAM_LINE`][`$DDRAM_SIZE`];
@@ -254,7 +255,9 @@ cystatus `$INSTANCE_NAME`_Main(void) {
 	
 	switch (state) {
 		case 0: {
-			if (Status() & StatusMask) {
+			const uint8 sts = Status();
+			ClearStatus();
+			if (sts & StatusMask) {
 				return CYRET_SUCCESS;
 			}
 			timer = `$SYSTICK_NAME`_GetTime();
