@@ -15,14 +15,15 @@
 
 #include <project.h>
 
-#define DMA_BUF_SIZE 64
-#define DMA_BAT_SIZE 32
+extern int16 vc;
+extern int16 ic;
+extern int32 wc;
+extern int16 lv;
+extern int16 li;
+extern int32 lw;
 
-extern uint16 buf_v[DMA_BUF_SIZE];
-extern uint16 buf_i[DMA_BUF_SIZE];
-extern uint32 buf_bat[DMA_BAT_SIZE];
-
-void DMA_init(void);
+void DMA_init(uint16);
+void PWM_control(int32 w);
 
 
 #endif // DMA_H

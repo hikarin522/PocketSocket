@@ -12,9 +12,64 @@
 
 #include "dma.h"
 
-uint16 buf_v[DMA_BUF_SIZE];
-uint16 buf_i[DMA_BUF_SIZE];
-uint32 buf_bat[DMA_BAT_SIZE];
+#define DMA_BAT_SIZE 64
+static int16 buf_v[1];
+static int16 buf_i[1];
+static int16 dma_ignore[1];
+static int16 buf_bat[2][DMA_BAT_SIZE];
+
+int16 vc = 0;
+int16 ic = 0;
+int32 wc = 0;
+int16 lv = 0;
+int16 li = 0;
+int32 lw = 0;
+
+#define V_F 1
+#define I_F 2
+static inline void calcW(const uint8 vi) {
+	static int32 _lw = 0;
+	static uint8 f = 0, c = 0;
+	f |= vi;
+	if (f == (V_F | I_F)) {
+		f = 0;
+		wc = (int32)vc * (int32)ic;
+		_lw += wc;
+		if (++c == 0) {
+			lw = _lw >> 8;
+			_lw = 0;
+		}
+		PWM_control(wc);
+	}
+}
+
+CY_ISR(isr_v) {
+	static uint8 c = 0;
+	static int32 _lv = 0;
+	vc = *buf_v;
+	calcW(V_F);
+	_lv += (int32)vc;
+	if (++c == 0) {
+		lv = _lv >> 8;
+		_lv = 0;
+	}
+}
+
+CY_ISR(isr_i) {
+	static uint8 c = 0;
+	static int32 _li = 0;
+	ic = *buf_i;
+	calcW(I_F);
+	_li += (int32)ic;
+	if (++c == 0) {
+		li = _li >> 8;
+		_li = 0;
+	}
+}
+
+CY_ISR(isr_bat) {
+}
+
 
 /* Defines for DMA_V */
 #define DMA_V_BYTES_PER_BURST 2
@@ -39,7 +94,7 @@ uint8 DMA_I_Chan;
 uint8 DMA_I_TD[1];
 
 /* Defines for DMA_A */
-#define DMA_A_BYTES_PER_BURST 2
+#define DMA_A_BYTES_PER_BURST sizeof(buf_v[0])
 #define DMA_A_REQUEST_PER_BURST 1
 #define DMA_A_SRC_BASE (CYDEV_PERIPH_BASE)
 #define DMA_A_DST_BASE (CYDEV_SRAM_BASE)
@@ -47,10 +102,10 @@ uint8 DMA_I_TD[1];
 /* Variable declarations for DMA_A */
 /* Move these variable declarations to the top of the function */
 uint8 DMA_A_Chan;
-uint8 DMA_A_TD[1];
+uint8 DMA_A_TD[2];
 
 /* Defines for DMA_B */
-#define DMA_B_BYTES_PER_BURST 2
+#define DMA_B_BYTES_PER_BURST sizeof(buf_i[0])
 #define DMA_B_REQUEST_PER_BURST 1
 #define DMA_B_SRC_BASE (CYDEV_PERIPH_BASE)
 #define DMA_B_DST_BASE (CYDEV_SRAM_BASE)
@@ -58,10 +113,10 @@ uint8 DMA_A_TD[1];
 /* Variable declarations for DMA_B */
 /* Move these variable declarations to the top of the function */
 uint8 DMA_B_Chan;
-uint8 DMA_B_TD[1];
+uint8 DMA_B_TD[2];
 
 /* Defines for DMA_Bat */
-#define DMA_Bat_BYTES_PER_BURST 4
+#define DMA_Bat_BYTES_PER_BURST sizeof(buf_bat[0][0])
 #define DMA_Bat_REQUEST_PER_BURST 1
 #define DMA_Bat_SRC_BASE (CYDEV_PERIPH_BASE)
 #define DMA_Bat_DST_BASE (CYDEV_SRAM_BASE)
@@ -69,9 +124,9 @@ uint8 DMA_B_TD[1];
 /* Variable declarations for DMA_Bat */
 /* Move these variable declarations to the top of the function */
 uint8 DMA_Bat_Chan;
-uint8 DMA_Bat_TD[1];
+uint8 DMA_Bat_TD[2];
 
-void DMA_init() {
+void DMA_init(const uint16 skip) {
 	/* DMA Configuration for DMA_V */
 	DMA_V_Chan = DMA_V_DmaInitialize(DMA_V_BYTES_PER_BURST, DMA_V_REQUEST_PER_BURST, HI16(DMA_V_SRC_BASE), HI16(DMA_V_DST_BASE));
 	DMA_V_TD[0] = CyDmaTdAllocate();
@@ -80,7 +135,7 @@ void DMA_init() {
 	CyDmaChSetInitialTd(DMA_V_Chan, DMA_V_TD[0]);
 	CyDmaChRoundRobin(DMA_V_Chan, 1);
 	CyDmaChEnable(DMA_V_Chan, 1);
-
+	
 	/* DMA Configuration for DMA_I */
 	DMA_I_Chan = DMA_I_DmaInitialize(DMA_I_BYTES_PER_BURST, DMA_I_REQUEST_PER_BURST, HI16(DMA_I_SRC_BASE), HI16(DMA_I_DST_BASE));
 	DMA_I_TD[0] = CyDmaTdAllocate();
@@ -93,29 +148,40 @@ void DMA_init() {
 	/* DMA Configuration for DMA_A */
 	DMA_A_Chan = DMA_A_DmaInitialize(DMA_A_BYTES_PER_BURST, DMA_A_REQUEST_PER_BURST, HI16(DMA_A_SRC_BASE), HI16(DMA_A_DST_BASE));
 	DMA_A_TD[0] = CyDmaTdAllocate();
-	CyDmaTdSetConfiguration(DMA_A_TD[0], sizeof(buf_v[0]) * sizeof(buf_v), DMA_A_TD[0], DMA_A__TD_TERMOUT_EN | TD_INC_DST_ADR);
-	CyDmaTdSetAddress(DMA_A_TD[0], LO16((uint32)Filter_HOLDA_PTR), LO16((uint32)buf_v));
+	DMA_A_TD[1] = CyDmaTdAllocate();
+	CyDmaTdSetConfiguration(DMA_A_TD[0], skip * sizeof(buf_v), DMA_A_TD[1], 0);
+	CyDmaTdSetConfiguration(DMA_A_TD[1], sizeof(buf_v), DMA_A_TD[0], DMA_A__TD_TERMOUT_EN);
+	CyDmaTdSetAddress(DMA_A_TD[0], LO16((uint32)Filter_HOLDA_PTR), LO16((uint32)dma_ignore));
+	CyDmaTdSetAddress(DMA_A_TD[1], LO16((uint32)Filter_HOLDA_PTR), LO16((uint32)buf_v));
 	CyDmaChSetInitialTd(DMA_A_Chan, DMA_A_TD[0]);
-	CyDmaChRoundRobin(DMA_A_Chan, 1);
 	CyDmaChEnable(DMA_A_Chan, 1);
-	
+
 	/* DMA Configuration for DMA_B */
 	DMA_B_Chan = DMA_B_DmaInitialize(DMA_B_BYTES_PER_BURST, DMA_B_REQUEST_PER_BURST, HI16(DMA_B_SRC_BASE), HI16(DMA_B_DST_BASE));
 	DMA_B_TD[0] = CyDmaTdAllocate();
-	CyDmaTdSetConfiguration(DMA_B_TD[0], sizeof(buf_i[0]) * sizeof(buf_i), DMA_B_TD[0], DMA_B__TD_TERMOUT_EN | TD_INC_DST_ADR);
-	CyDmaTdSetAddress(DMA_B_TD[0], LO16((uint32)Filter_HOLDB_PTR), LO16((uint32)buf_i));
+	DMA_B_TD[1] = CyDmaTdAllocate();
+	CyDmaTdSetConfiguration(DMA_B_TD[0], skip * sizeof(buf_i), DMA_B_TD[1], 0);
+	CyDmaTdSetConfiguration(DMA_B_TD[1], sizeof(buf_i), DMA_B_TD[0], DMA_B__TD_TERMOUT_EN);
+	CyDmaTdSetAddress(DMA_B_TD[0], LO16((uint32)Filter_HOLDB_PTR), LO16((uint32)dma_ignore));
+	CyDmaTdSetAddress(DMA_B_TD[1], LO16((uint32)Filter_HOLDB_PTR), LO16((uint32)buf_i));
 	CyDmaChSetInitialTd(DMA_B_Chan, DMA_B_TD[0]);
-	CyDmaChRoundRobin(DMA_B_Chan, 1);
 	CyDmaChEnable(DMA_B_Chan, 1);
 
 	/* DMA Configuration for DMA_Bat */
 	DMA_Bat_Chan = DMA_Bat_DmaInitialize(DMA_Bat_BYTES_PER_BURST, DMA_Bat_REQUEST_PER_BURST, HI16(DMA_Bat_SRC_BASE), HI16(DMA_Bat_DST_BASE));
 	DMA_Bat_TD[0] = CyDmaTdAllocate();
-	CyDmaTdSetConfiguration(DMA_Bat_TD[0], sizeof(buf_bat[0]) * sizeof(buf_bat), DMA_Bat_TD[0], DMA_Bat__TD_TERMOUT_EN | TD_INC_DST_ADR);
-	CyDmaTdSetAddress(DMA_Bat_TD[0], LO16((uint32)ADC_Bat_DEC_SAMP_PTR), LO16((uint32)buf_bat));
+	DMA_Bat_TD[1] = CyDmaTdAllocate();
+	CyDmaTdSetConfiguration(DMA_Bat_TD[0], sizeof(buf_bat[0]), DMA_Bat_TD[1], TD_INC_DST_ADR | DMA_Bat__TD_TERMOUT_EN);
+	CyDmaTdSetConfiguration(DMA_Bat_TD[1], sizeof(buf_bat[1]), DMA_Bat_TD[0], TD_INC_DST_ADR | DMA_Bat__TD_TERMOUT_EN);
+	CyDmaTdSetAddress(DMA_Bat_TD[0], LO16((uint32)ADC_Bat_DEC_SAMP_PTR), LO16((uint32)buf_bat[0]));
+	CyDmaTdSetAddress(DMA_Bat_TD[1], LO16((uint32)ADC_Bat_DEC_SAMP_PTR), LO16((uint32)buf_bat[1]));
 	CyDmaChSetInitialTd(DMA_Bat_Chan, DMA_Bat_TD[0]);
 	CyDmaChRoundRobin(DMA_Bat_Chan, 1);
 	CyDmaChEnable(DMA_Bat_Chan, 1);
+	
+	isr_V_StartEx(isr_v);
+	isr_I_StartEx(isr_i);
+	isr_Bat_StartEx(isr_bat);
 }
 
 /* [] END OF FILE */
