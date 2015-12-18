@@ -12,64 +12,10 @@
 
 #include "dma.h"
 
-#define DMA_BAT_SIZE 64
-static int16 buf_v[1];
-static int16 buf_i[1];
+int16 buf_v[1];
+int16 buf_i[1];
 static int16 dma_ignore[1];
-static int16 buf_bat[2][DMA_BAT_SIZE];
-
-int16 vc = 0;
-int16 ic = 0;
-int32 wc = 0;
-int16 lv = 0;
-int16 li = 0;
-int32 lw = 0;
-
-#define V_F 1
-#define I_F 2
-static inline void calcW(const uint8 vi) {
-	static int32 _lw = 0;
-	static uint8 f = 0, c = 0;
-	f |= vi;
-	if (f == (V_F | I_F)) {
-		f = 0;
-		wc = (int32)vc * (int32)ic;
-		_lw += wc;
-		if (++c == 0) {
-			lw = _lw >> 8;
-			_lw = 0;
-		}
-		PWM_control(wc);
-	}
-}
-
-CY_ISR(isr_v) {
-	static uint8 c = 0;
-	static int32 _lv = 0;
-	vc = *buf_v;
-	calcW(V_F);
-	_lv += (int32)vc;
-	if (++c == 0) {
-		lv = _lv >> 8;
-		_lv = 0;
-	}
-}
-
-CY_ISR(isr_i) {
-	static uint8 c = 0;
-	static int32 _li = 0;
-	ic = *buf_i;
-	calcW(I_F);
-	_li += (int32)ic;
-	if (++c == 0) {
-		li = _li >> 8;
-		_li = 0;
-	}
-}
-
-CY_ISR(isr_bat) {
-}
-
+int16 buf_bat[2][DMA_BAT_SIZE];
 
 /* Defines for DMA_V */
 #define DMA_V_BYTES_PER_BURST 2
@@ -178,10 +124,6 @@ void DMA_init(const uint16 skip) {
 	CyDmaChSetInitialTd(DMA_Bat_Chan, DMA_Bat_TD[0]);
 	CyDmaChRoundRobin(DMA_Bat_Chan, 1);
 	CyDmaChEnable(DMA_Bat_Chan, 1);
-	
-	isr_V_StartEx(isr_v);
-	isr_I_StartEx(isr_i);
-	isr_Bat_StartEx(isr_bat);
 }
 
 /* [] END OF FILE */
