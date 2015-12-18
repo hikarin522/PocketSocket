@@ -124,7 +124,7 @@ static inline pwm_state pwm_dec(pwm_state s) {
 	}
 }
 
-#define TH 2
+#define TH 5
 void PWM_control(const int32 w) {
 	static uint8 state = 0;
 	static pwm_state s = {0, 0};
@@ -156,36 +156,5 @@ void PWM_control(const int32 w) {
 	}
 	pre = w;
 }
-/*
-void PWM_control(const int32 w) {
-	static uint8 state = 0;
-	static pwm_state s = {0, 0};
-	static int32 pre = 0, next = 0;
-	
-	switch (state) {
-	case 0:
-		pre = w;
-		pwm_inc(s);
-		state = 1;
-		break;
-	case 2:
-		next = w;
-		pwm_dec(s);
-		state = 3;
-		break;
-	case 4:
-		if (w > pre && w > next) {
-			s = pwm_dec(s);
-		} else if (next > w && next > pre) {
-			s = pwm_inc(s);
-		} else {
-			PWM_WriteCompare(s);
-		}
-		state = -1;
-		break;
-	default:
-		state++;
-	}
-}
-*/
+
 /* [] END OF FILE */
