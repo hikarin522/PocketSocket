@@ -23,6 +23,7 @@ int32 wc = 0;
 int16 lv = 0;
 int16 li = 0;
 int32 lw = 0;
+int32 bat_ave = 0;
 
 #define V_F 1
 #define I_F 2
@@ -52,6 +53,12 @@ CY_ISR(isr_i) {
 }
 
 CY_ISR(isr_bat) {
+	uint8 i;
+	int32 bat_sum = 0;
+	for (i = 0; i < DMA_BAT_SIZE; ++i) {
+		bat_sum += buf_bat[i];
+	}
+	bat_ave = bat_sum / DMA_BAT_SIZE;
 }
 
 static inline void calcW(const uint8 vi) {
@@ -92,6 +99,36 @@ case 2*i+1:\
 #undef PWM
 }
 
+static inline pwm_state pwm_add(pwm_state s, int16 count) {
+	count += s.comp;
+	for (;;) {
+		if (count > 25) {
+			s.comp = 25;
+			PWM_WriteCompare(s);
+			if (s.pwm >= 23) {
+				return s;
+			} else {
+				++s.pwm;
+				count -= 25;
+			}
+		} else if (count < 0) {
+			s.comp = 0;
+			PWM_WriteCompare(s);
+			if (s.pwm == 0) {
+				return s;
+			} else {
+				--s.pwm;
+				count += 25;
+			}
+		} else {
+			s.comp = count;
+			PWM_WriteCompare(s);
+			return s;
+		}
+	}
+	return s;
+}
+
 static inline pwm_state pwm_inc(pwm_state s) {
 	if (s.comp >= 25 && s.pwm >= 23) {
 		return s;
@@ -123,22 +160,41 @@ static inline pwm_state pwm_dec(pwm_state s) {
 		return s;
 	}
 }
-
-#define TH 5
-void PWM_control(const int32 w) {
+/*
+#define P 1
+static inline void PWM_control2(const int32 w) {
 	static uint8 state = 0;
 	static pwm_state s = {0, 0};
 	static int32 pre = 0, ave = 0;
-	static int8 count = 0;
+	static uint16 count = 0;
 	
+	
+}*/
+
+#define SKIP 8
+#define AVE 128
+#define TH 0x1000
+static inline void PWM_control(const int32 w) {
+	static uint8 state = 0;
+	static pwm_state s = {0, 0};
+	static int32 pre = 0;
+	static int32 ave = 0;
+	static uint16 count = 0;
+	
+	if (vc < 0x220) {
+		s = pwm_dec(s);
+		return;
+	}
+	if (++count < SKIP)
+		return;
 	ave += w;
-	if (++count < TH)
+	if (++count < SKIP + AVE)
 		return;
 	count = 0;
 	
 	switch (state) {
 	case 0:
-		if (w >= pre) {
+		if (ave >= pre) {
 			s = pwm_inc(s);
 		} else {
 			s = pwm_dec(s);
@@ -146,7 +202,7 @@ void PWM_control(const int32 w) {
 		}
 		break;
 	case 1:
-		if (w >= pre) {
+		if (ave >= pre) {
 			s = pwm_dec(s);
 		} else {
 			s = pwm_inc(s);
@@ -154,7 +210,8 @@ void PWM_control(const int32 w) {
 		}
 		break;
 	}
-	pre = w;
+	pre = ave - TH;
+	ave = 0;
 }
 
 /* [] END OF FILE */

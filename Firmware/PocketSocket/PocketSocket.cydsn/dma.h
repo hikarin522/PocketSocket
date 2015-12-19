@@ -18,7 +18,7 @@
 #define DMA_BAT_SIZE 64
 extern int16 buf_v[1];
 extern int16 buf_i[1];
-extern int16 buf_bat[2][DMA_BAT_SIZE];
+extern int16 buf_bat[DMA_BAT_SIZE];
 
 void DMA_init(uint16);
 

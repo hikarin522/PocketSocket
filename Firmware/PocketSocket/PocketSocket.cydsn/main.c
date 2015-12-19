@@ -20,7 +20,7 @@
 
 #define PWM(x, i, name) BOOST_PP_CAT(PWM_, BOOST_PP_CAT(i, BOOST_PP_CAT(_, name)))
 static inline void init(void);
-static inline int format(char[17], int16, int16);
+static inline int format(char[17], int32, int32);
 
 int main() {
 	CyGlobalIntEnable;
@@ -36,17 +36,19 @@ int main() {
 		//USB_Main();
 		I2C_LCD_Main();
 		
-		if (SysTick_GetInterval(timer) > SysTick_ms(250)) {
+		if (SysTick_GetInterval(timer) > SysTick_ms(500)) {
 			//const uint8 usb_active = USBUART_CheckActivity();
 			//const int16 bat = ADC_Bat_CountsTo_mVolts(bat_res);
 			//USB_Printf("%d[mV], %d[mA]\n", mv, ma);
 			I2C_LCD_ClearDisplay();
+			const int64 tv = (int64)ADC_V_CountsTo_mVolts(vc) * 931;
 			
-			const int16 mv = ADC_V_CountsTo_mVolts(vc) * 3;
+			const int32 mv = (tv >> 5) + (tv >> 10) + (tv >> 15) + (tv >> 20);
 			const int16 ma = ADC_I_CountsTo_mVolts(ic);
+			const int16 bat = ADC_Bat_CountsTo_mVolts(bat_ave);
 			char buf1[17], buf2[17];
 			format(buf1, mv, ma);
-			snprintf(buf2, sizeof(buf2), "%04x %04x %04x", 0, lv, li);
+			snprintf(buf2, sizeof(buf2), "%04x %04x %04x", bat, lv, li);
 			I2C_LCD_SetPosition(0, 0);
 			I2C_LCD_PutString(buf1);
 			I2C_LCD_SetPosition(1, 0);
@@ -57,10 +59,10 @@ int main() {
 	}
 }
 
-static inline int format(char str[17], const int16 mv, const int16 ma) {
-	char mv_str[7], ma_str[7];
-	snprintf(mv_str, sizeof(mv_str), "%+06d", mv);
-	snprintf(ma_str, sizeof(ma_str), "%+06d", ma);
+static inline int format(char str[17], const int32 mv, const int32 ma) {
+	char mv_str[8], ma_str[7];
+	snprintf(mv_str, sizeof(mv_str), "%+07ld", mv);
+	snprintf(ma_str, sizeof(ma_str), "%+06ld", ma);
 	uint8 i;
 	for (i = 1; i < 3 && mv_str[i] == '0'; i++)
 		mv_str[i] = ' ';
@@ -96,7 +98,7 @@ static inline void init() {
 	isr_V_StartEx(isr_v);
 	isr_I_StartEx(isr_i);
 	isr_Bat_StartEx(isr_bat);
-
+ 
 	I2C_Start();
 	USBUART_Start(0, USBUART_5V_OPERATION);
 	

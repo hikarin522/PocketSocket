@@ -21,6 +21,7 @@ extern int32 wc;
 extern int16 lv;
 extern int16 li;
 extern int32 lw;
+extern int32 bat_ave;
 	
 CY_ISR_PROTO(isr_v);
 CY_ISR_PROTO(isr_i);
