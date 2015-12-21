@@ -16,6 +16,7 @@
     "gulp": "^3.9.0"
   },
   "dependencies": {
+    "electron-packager": "^5.2.0",
     "electron-prebuilt": "^0.35.2"
   }
 }
