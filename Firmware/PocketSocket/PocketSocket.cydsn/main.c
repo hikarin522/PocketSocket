@@ -36,7 +36,7 @@ int main() {
 		//USB_Main();
 		I2C_LCD_Main();
 		
-		if (SysTick_GetInterval(timer) > SysTick_ms(500)) {
+		if (SysTick_GetInterval(timer) > SysTick_ms(250)) {
 			//const uint8 usb_active = USBUART_CheckActivity();
 			//const int16 bat = ADC_Bat_CountsTo_mVolts(bat_res);
 			//USB_Printf("%d[mV], %d[mA]\n", mv, ma);
@@ -94,7 +94,7 @@ static inline void init() {
     Filter_SetDalign(Filter_STAGEA_DALIGN | Filter_HOLDA_DALIGN | Filter_STAGEB_DALIGN | Filter_HOLDB_DALIGN, Filter_ENABLED);
 	ADC_Bat_SetCoherency(ADC_Bat_COHER_MID);
 
-	DMA_init(60);
+	DMA_init(63);
 	isr_V_StartEx(isr_v);
 	isr_I_StartEx(isr_i);
 	isr_Bat_StartEx(isr_bat);

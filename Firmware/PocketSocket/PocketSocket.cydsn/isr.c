@@ -10,6 +10,7 @@
  * ========================================
 */
 
+#include <project.h>
 #include "isr.h"
 #include "dma.h"
 #include "boost/preprocessor.hpp"
@@ -171,8 +172,39 @@ static inline void PWM_control2(const int32 w) {
 	
 }*/
 
-#define SKIP 8
-#define AVE 128
+static inline pwm_state createState(const uint8 pwm, const uint8 comp) {
+	const pwm_state ret = {pwm, comp};
+	return ret;
+}
+
+#define SKIP 0x80
+static inline void PWM_control(const int32 w) {
+	static uint16 count = 0;
+	static uint8 f = 0;
+	if (++count < SKIP) {
+		return;
+	}
+	count = 0;
+	
+	if (f) {
+		PWM_WriteCompare(createState(0, 25));
+		PWM_WriteCompare(createState(1, 25));
+		PWM_WriteCompare(createState(2, 25));
+		Pin_1_Write(f);
+		f = 0;
+	} else {
+		
+		PWM_WriteCompare(createState(0, 0));
+		PWM_WriteCompare(createState(1, 0));
+		PWM_WriteCompare(createState(2, 0));
+		Pin_1_Write(f);
+		f = 1;
+	}
+}
+
+/*
+#define SKIP 2
+#define AVE 5
 #define TH 0x1000
 static inline void PWM_control(const int32 w) {
 	static uint8 state = 0;
@@ -212,6 +244,6 @@ static inline void PWM_control(const int32 w) {
 	}
 	pre = ave - TH;
 	ave = 0;
-}
+}*/
 
 /* [] END OF FILE */
