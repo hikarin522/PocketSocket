@@ -17,6 +17,7 @@
 #include "dma.h"
 #include "usb.h"
 #include "isr.h"
+#include "pwm.h"
 
 #define PWM(x, i, name) BOOST_PP_CAT(PWM_, BOOST_PP_CAT(i, BOOST_PP_CAT(_, name)))
 static inline void init(void);
@@ -33,22 +34,25 @@ int main() {
 	SysTick_t timer = SysTick_GetTime();
 	uint8 led = 0;
 	for (;;) {
-		//USB_Main();
+		USB_Main();
 		I2C_LCD_Main();
 		
-		if (SysTick_GetInterval(timer) > SysTick_ms(250)) {
+		if (SysTick_GetInterval(timer) > SysTick_ms(500)) {
 			//const uint8 usb_active = USBUART_CheckActivity();
 			//const int16 bat = ADC_Bat_CountsTo_mVolts(bat_res);
 			//USB_Printf("%d[mV], %d[mA]\n", mv, ma);
 			I2C_LCD_ClearDisplay();
-			const int64 tv = (int64)ADC_V_CountsTo_mVolts(vc) * 931;
 			
-			const int32 mv = (tv >> 5) + (tv >> 10) + (tv >> 15) + (tv >> 20);
+			// x186.2/6.2 = 931/31
+			//const int64 tv = (int64)ADC_V_CountsTo_mVolts(vc) * 931;
+			//const int32 mv = (tv >> 5) + (tv >> 10) + (tv >> 15) + (tv >> 20);
+			const int32 mv = (int64)ADC_V_CountsTo_mVolts(vc) * 931 / 31;
+
 			const int16 ma = ADC_I_CountsTo_mVolts(ic);
 			const int16 bat = ADC_Bat_CountsTo_mVolts(bat_ave);
 			char buf1[17], buf2[17];
 			format(buf1, mv, ma);
-			snprintf(buf2, sizeof(buf2), "%04x %04x %04x", bat, lv, li);
+			snprintf(buf2, sizeof(buf2), "%04x %08lx", bat, li);
 			I2C_LCD_SetPosition(0, 0);
 			I2C_LCD_PutString(buf1);
 			I2C_LCD_SetPosition(1, 0);
@@ -94,7 +98,7 @@ static inline void init() {
     Filter_SetDalign(Filter_STAGEA_DALIGN | Filter_HOLDA_DALIGN | Filter_STAGEB_DALIGN | Filter_HOLDB_DALIGN, Filter_ENABLED);
 	ADC_Bat_SetCoherency(ADC_Bat_COHER_MID);
 
-	DMA_init(63);
+	DMA_init(4);
 	isr_V_StartEx(isr_v);
 	isr_I_StartEx(isr_i);
 	isr_Bat_StartEx(isr_bat);

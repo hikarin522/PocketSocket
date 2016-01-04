@@ -16,6 +16,7 @@
 #include <project.h>
 	
 #define DMA_BAT_SIZE 64
+//#define DMA_SIZE 1
 extern int16 buf_v[1];
 extern int16 buf_i[1];
 extern int16 buf_bat[DMA_BAT_SIZE];

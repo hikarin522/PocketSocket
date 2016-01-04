@@ -95,7 +95,7 @@ void DMA_init(const uint16 skip) {
 	DMA_A_Chan = DMA_A_DmaInitialize(DMA_A_BYTES_PER_BURST, DMA_A_REQUEST_PER_BURST, HI16(DMA_A_SRC_BASE), HI16(DMA_A_DST_BASE));
 	DMA_A_TD[0] = CyDmaTdAllocate();
 	DMA_A_TD[1] = CyDmaTdAllocate();
-	CyDmaTdSetConfiguration(DMA_A_TD[0], skip * sizeof(buf_v), DMA_A_TD[1], 0);
+	CyDmaTdSetConfiguration(DMA_A_TD[0], sizeof(dma_ignore) * skip, DMA_A_TD[1], 0);
 	CyDmaTdSetConfiguration(DMA_A_TD[1], sizeof(buf_v), DMA_A_TD[0], DMA_A__TD_TERMOUT_EN);
 	CyDmaTdSetAddress(DMA_A_TD[0], LO16((uint32)Filter_HOLDA_PTR), LO16((uint32)dma_ignore));
 	CyDmaTdSetAddress(DMA_A_TD[1], LO16((uint32)Filter_HOLDA_PTR), LO16((uint32)buf_v));
@@ -106,7 +106,7 @@ void DMA_init(const uint16 skip) {
 	DMA_B_Chan = DMA_B_DmaInitialize(DMA_B_BYTES_PER_BURST, DMA_B_REQUEST_PER_BURST, HI16(DMA_B_SRC_BASE), HI16(DMA_B_DST_BASE));
 	DMA_B_TD[0] = CyDmaTdAllocate();
 	DMA_B_TD[1] = CyDmaTdAllocate();
-	CyDmaTdSetConfiguration(DMA_B_TD[0], skip * sizeof(buf_i), DMA_B_TD[1], 0);
+	CyDmaTdSetConfiguration(DMA_B_TD[0], sizeof(dma_ignore) * skip, DMA_B_TD[1], 0);
 	CyDmaTdSetConfiguration(DMA_B_TD[1], sizeof(buf_i), DMA_B_TD[0], DMA_B__TD_TERMOUT_EN);
 	CyDmaTdSetAddress(DMA_B_TD[0], LO16((uint32)Filter_HOLDB_PTR), LO16((uint32)dma_ignore));
 	CyDmaTdSetAddress(DMA_B_TD[1], LO16((uint32)Filter_HOLDB_PTR), LO16((uint32)buf_i));
