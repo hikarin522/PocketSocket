@@ -14,10 +14,12 @@
 #define ISR_H
 
 #include <project.h>
+	
+extern uint16 vr;
 
 extern int16 vc;
 extern int16 ic;
-extern int16 lv;
+extern int32 lv;
 extern int32 li;
 	
 extern int32 bat_ave;

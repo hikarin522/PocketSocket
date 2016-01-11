@@ -26,6 +26,7 @@ extern const WriteCompF PWM_WriteComp[24];
 pwm_state pwm_inc(pwm_state);
 pwm_state pwm_dec(pwm_state);
 pwm_state pwm_add(pwm_state, int16);
+pwm_state pwm_set(pwm_state, int16);
 pwm_state createState(uint8, uint8);
 #endif // PWM_H
 

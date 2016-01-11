@@ -10,6 +10,8 @@
  * ========================================
 */
 
+#define LED_TEST 0
+
 #include <project.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -33,11 +35,62 @@ int main() {
 	
 	SysTick_t timer = SysTick_GetTime();
 	uint8 led = 0;
+	LED_Write(0);
+	uint8 sw_f = 1;
+	
+#if LED_TEST == 1
+	uint8 pwm = 0;
+
+	for (;;) {
+		
+		if (sw_f && SW_Read()) {
+			sw_f = 0;
+			uint8 i;
+			for (i = 0; i < 24; i++) {
+				PWM_WriteComp[i](pwm);
+			}
+			if (++pwm > 25) {
+				pwm = 0;
+			}
+		} else if (!sw_f && !SW_Read()) {
+			sw_f = 1;
+		}
+		if (SysTick_GetInterval(timer) > SysTick_ms(500)) {
+				LED_Write(led ^= 1);
+			timer = SysTick_GetTime();
+		}
+	}
+#elif LED_TEST == 2
+	for (;;) {
+		uint8 i;
+		for (i = 0; i < 24; i++) {
+			PWM_WriteComp[i](1);
+			LED_Write(led ^= 1);
+			CyDelay(1000);
+			PWM_WriteComp[i](0);
+		}
+	}
+#else
 	for (;;) {
 		USB_Main();
 		I2C_LCD_Main();
 		
+		if (sw_f && SW_Read()) {
+			sw_f = 0;
+			++vr;
+			if (vr > 16) {
+				vr = 1;
+			}
+		} else if (!sw_f && !SW_Read()) {
+			sw_f = 1;
+		}
+		
+		
+		
 		if (SysTick_GetInterval(timer) > SysTick_ms(500)) {
+			if (!EN_Read()) {
+				EN_Reg_Write(1);
+			}
 			//const uint8 usb_active = USBUART_CheckActivity();
 			//const int16 bat = ADC_Bat_CountsTo_mVolts(bat_res);
 			//USB_Printf("%d[mV], %d[mA]\n", mv, ma);
@@ -52,7 +105,7 @@ int main() {
 			const int16 bat = ADC_Bat_CountsTo_mVolts(bat_ave);
 			char buf1[17], buf2[17];
 			format(buf1, mv, ma);
-			snprintf(buf2, sizeof(buf2), "%04x %08lx", bat, li);
+			snprintf(buf2, sizeof(buf2), "%08lx%08lx", lv, li);
 			I2C_LCD_SetPosition(0, 0);
 			I2C_LCD_PutString(buf1);
 			I2C_LCD_SetPosition(1, 0);
@@ -61,6 +114,7 @@ int main() {
 			timer = SysTick_GetTime();
 		}
 	}
+#endif // LED_TEST
 }
 
 static inline int format(char str[17], const int32 mv, const int32 ma) {
@@ -80,10 +134,10 @@ static inline int format(char str[17], const int32 mv, const int32 ma) {
 }
 
 static inline void init() {
-	VDAC_MAX_Start();
-    VDAC_MIN_Start();
-    Comp_MAX_Start();
-    Comp_MIN_Start();
+	VDAC_I_Start();
+    VDAC_V_Start();
+    Comp_I_Start();
+    Comp_V_Start();
 	
 	BOOST_PP_REPEAT(12, PWM, Start();)
 	
@@ -98,11 +152,13 @@ static inline void init() {
     Filter_SetDalign(Filter_STAGEA_DALIGN | Filter_HOLDA_DALIGN | Filter_STAGEB_DALIGN | Filter_HOLDB_DALIGN, Filter_ENABLED);
 	ADC_Bat_SetCoherency(ADC_Bat_COHER_MID);
 
+	
+#if !LED_TEST
 	DMA_init(4);
 	isr_V_StartEx(isr_v);
 	isr_I_StartEx(isr_i);
 	isr_Bat_StartEx(isr_bat);
- 
+#endif
 	I2C_Start();
 	USBUART_Start(0, USBUART_5V_OPERATION);
 	
@@ -110,12 +166,13 @@ static inline void init() {
 	I2C_LCD_Start();
 	
 	SysTick_Start();
-	
+
+#if !LED_TEST
 	ADC_V_StartConvert();
 	ADC_I_StartConvert();
 	ADC_Bat_StartConvert();
-	
-	EN_Write(1);
+#endif
+	EN_Reg_Write(1);
 }
 
 

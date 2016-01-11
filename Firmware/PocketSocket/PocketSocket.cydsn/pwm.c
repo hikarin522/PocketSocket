@@ -19,6 +19,14 @@ const WriteCompF PWM_WriteComp[24] = {BOOST_PP_REPEAT(12, PWM_WRITECOMP, null)};
 #undef PWM_WRITECOMP
 #undef PWM
 
+pwm_state pwm_set(pwm_state s, int16 val) {
+	if (val > 24 * 25) {
+		val = 24 * 25;
+	}
+	
+	return pwm_add(s, val - (s.comp + s.pwm * 25));
+}
+
 pwm_state pwm_add(pwm_state s, int16 count) {
 	count += s.comp;
 	for (;;) {
@@ -52,8 +60,7 @@ pwm_state pwm_add(pwm_state s, int16 count) {
 pwm_state pwm_inc(pwm_state s) {
 	if (s.comp >= 25 && s.pwm >= 23) {
 		return s;
-	}
-	else if (s.comp >= 25 && s.pwm < 23) {
+	} else if (s.comp >= 25 && s.pwm < 23) {
 		++s.pwm;
 		s.comp = 1;
 		PWM_WriteComp[s.pwm](s.comp);
@@ -68,8 +75,7 @@ pwm_state pwm_inc(pwm_state s) {
 pwm_state pwm_dec(pwm_state s) {
 	if (s.comp == 0 && s.pwm == 0) {
 		return s;
-	}
-	else if (s.comp == 0 && s.pwm > 0) {
+	} else if (s.comp == 0 && s.pwm > 0) {
 		--s.pwm;
 		s.comp = 24;
 		PWM_WriteComp[s.pwm](s.comp);
